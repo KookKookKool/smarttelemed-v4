@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'core/splash/plus_loader.dart';
 import 'core/splash/splash_screen.dart';
+import 'core/auth/auth_screen.dart';
+import 'core/vhv/login_token.dart';
+import 'core/vhv/login_qrcam.dart';
 
 void main() {
   runApp(const MyApp());
@@ -18,6 +21,13 @@ class MyApp extends StatelessWidget {
       ),
       debugShowCheckedModeBanner: false,
       home: const PlusLoaderPage(),
+      routes: {
+        '/splash': (context) => const SplashScreen(),
+        '/auth': (context) => const AuthScreen(),
+        '/loginToken': (context) => const LoginTokenPage(),
+        '/loginQRCam': (context) => const LoginQrCamPage(),
+        // เพิ่ม routes อื่นๆ ตามต้องการ
+      },
     );
   }
 }
@@ -33,21 +43,30 @@ class _PlusLoaderPageState extends State<PlusLoaderPage> {
   bool _zooming = false;
 
   void _goToSplashScreen() async {
+    if (!mounted) return;
     setState(() {
       _zooming = true;
     });
     await Future.delayed(const Duration(milliseconds: 900));
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const SplashScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        transitionDuration: const Duration(milliseconds: 800),
-      ),
-    );
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/splash');
   }
+
+  void _goToAuthScreen() async {
+  if (!mounted) return;
+  setState(() {
+    _zooming = true;
+  });
+  await Future.delayed(const Duration(milliseconds: 900));
+  if (!mounted) return;
+  Navigator.of(context).pushReplacement(
+    PageRouteBuilder(
+      pageBuilder: (context, animation1, animation2) => const AuthScreen(),
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -55,13 +74,18 @@ class _PlusLoaderPageState extends State<PlusLoaderPage> {
       backgroundColor: Colors.white,
       body: Center(
         child: AnimatedScale(
+          alignment: Alignment.center,
+          onEnd: _goToSplashScreen,
           scale: _zooming ? 18.0 : 1.0,
           duration: const Duration(milliseconds: 900),
           curve: Curves.easeIn,
           child: AnimatedOpacity(
             opacity: _zooming ? 1.0 : 1.0,
             duration: const Duration(milliseconds: 900),
-            child: PlusLoader(size: 120, onCompleted: _goToSplashScreen),
+            child: PlusLoader(
+              size: 120,
+              onCompleted: _goToAuthScreen,
+            ),
           ),
         ),
       ),
