@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 class DeviceScreen extends StatelessWidget {
   const DeviceScreen({Key? key}) : super(key: key);
+
+  void _navigateTo(BuildContext context, String routeName) {
+    Navigator.pushNamed(context, routeName);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -11,60 +16,33 @@ class DeviceScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo and Title
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Image.asset('assets/logo.png', width: 50), // Replace with actual logo asset
-                SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'สวัสดี !',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      'โรงพยาบาลอีเอสเอ็ม',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                    Text(
-                      'E.S.M. Solution',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: 40),
-
-            // Circular Progress Indicator
+            // Logo and Title (จัดกลาง)
             Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'จำนวนผู้ใช้บริการวันนี้',
-                  style: TextStyle(fontSize: 18),
+                Center(
+                  child: Image.asset('assets/logo.png', width: 180, height: 180),
                 ),
-                SizedBox(height: 8),
-                Container(
-                  child: CircularProgressIndicator(
-                    value: 19 / 30, // Dynamic value
-                    strokeWidth: 8,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-                  ),
-                  height: 100,
-                  width: 100,
-                  alignment: Alignment.center,
+                const SizedBox(height: 16),
+                const Text(
+                  'สวัสดี !',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 8),
-                Text(
-                  '19 / 30',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.orange),
+                const SizedBox(height: 4),
+                const Text(
+                  'โรงพยาบาลอีเอสเอ็ม',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                const Text(
+                  'E.S.M. Solution',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
-            SizedBox(height: 40),
+            const SizedBox(height: 60),
 
             // Buttons
             Column(
@@ -73,19 +51,25 @@ class DeviceScreen extends StatelessWidget {
                   onPressed: () {
                     // Add your actions here
                   },
-                  child: Text('เชื่อมต่อต่ออุปกรณ์'),
+                  child: const Text('เชื่อมต่ออุปกรณ์'),
                   style: ElevatedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 50), // Full width
+                    fixedSize: const Size(274, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    // Add your actions here
+                    _navigateTo(context, '/idcardlog');
                   },
-                  child: Text('เข้าสู่ระบบใช้งาน'),
+                  child: const Text('เข้าสู่ระบบใช้งาน'),
                   style: ElevatedButton.styleFrom(
-                    minimumSize: Size(double.infinity, 50), // Full width
+                    fixedSize: const Size(274, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
                   ),
                 ),
               ],

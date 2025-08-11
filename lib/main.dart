@@ -6,6 +6,7 @@ import 'package:smarttelemed_v4/core/vhv/device_screen.dart';
 import 'package:smarttelemed_v4/core/splash/plus_loader.dart';
 import 'package:smarttelemed_v4/core/auth/auth_screen.dart';
 import 'package:smarttelemed_v4/core/splash/splash_screen.dart';
+import 'package:smarttelemed_v4/core/idcard/idcard_loginscreen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -29,6 +30,7 @@ class MyApp extends StatelessWidget {
         '/loginToken': (context) => const LoginTokenPage(),
         '/loginQRCam': (context) => const LoginQrCamPage(),
         '/device': (context) => const DeviceScreen(),
+        '/idcardlog': (context) => const IdCardLoginScreen(),
         // เพิ่ม routes อื่นๆ ตามต้องการ
       },
     );
