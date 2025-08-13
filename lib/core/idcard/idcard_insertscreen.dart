@@ -63,7 +63,7 @@ class IdCardInsertScreen extends StatelessWidget {
 
             // บัตรประชาชน (หมุน 90 องศา)
             Transform.rotate(
-              angle: -90 * 3.1415926535 / 180, // หมุนเป็นเรเดียน
+              angle: 0 * 3.1415926535 / 180, // หมุนเป็นเรเดียน
               child: Image.asset(
                 'assets/card.png', // เพิ่มภาพบัตรใน assets
                 height: 150,
