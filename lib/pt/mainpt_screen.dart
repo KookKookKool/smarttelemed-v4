@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:smarttelemed_v4/core/vitalsign/vitalsign_screen.dart';
 
 class MainPtScreen extends StatelessWidget {
   const MainPtScreen({Key? key}) : super(key: key);
@@ -499,8 +500,14 @@ class _QuickAction extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () {
-        // TODO: กำหนดปลายทางจริงของแอป
-        // Navigator.pushNamed(context, routeName);
+        if (label == 'ตรวจ') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const VitalSignScreen()),
+          );
+        } else {
+          // Navigator.pushNamed(context, routeName);
+        }
       },
       child: Column(
         children: [
