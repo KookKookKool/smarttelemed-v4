@@ -14,7 +14,7 @@ class _IdCardPtLoaderState extends State<IdCardPtLoader> {
     // หน่วงเวลา 3 วินาที แล้วไปหน้า dashboardscreen
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/dashboard');
+        Navigator.pushReplacementNamed(context, '/profilept');
       }
     });
   }

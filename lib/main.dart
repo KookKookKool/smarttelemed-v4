@@ -11,8 +11,8 @@ import 'package:smarttelemed_v4/core/vhv/idcard/idcard_insertscreen.dart';
 import 'package:smarttelemed_v4/core/vhv/idcard/idcard_loader.dart';
 import 'package:smarttelemed_v4/core/vhv/dashboard_screen.dart';
 import 'package:smarttelemed_v4/core/vhv/profile_screen.dart';
-import 'package:smarttelemed_v4/core/idcard/idcard_pt_insertscreen.dart';
-import 'package:smarttelemed_v4/core/idcard/idcard_pt_loader.dart';
+import 'package:smarttelemed_v4/pt/idcard/idcard_pt_insertscreen.dart';
+import 'package:smarttelemed_v4/pt/idcard/idcard_pt_loader.dart';
 
 void main() {
   runApp(const MyApp());

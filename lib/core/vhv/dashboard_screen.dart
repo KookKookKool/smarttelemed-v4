@@ -17,9 +17,9 @@ class DashboardScreen extends StatelessWidget {
           if (index == 0) {
             // หน้าเดิม
           } else if (index == 1) {
-            Navigator.pushNamed(context, '/settings');
+            Navigator.pushNamed(context, '/addcardpt');
           } else if (index == 2) {
-            Navigator.pushNamed(context, '/about');
+            Navigator.pushNamed(context, '/settings');
           }
         },
       ),
@@ -35,7 +35,7 @@ class DashboardScreen extends StatelessWidget {
                 children: [
                   const CircleAvatar(
                     radius: 30,
-                    backgroundImage: AssetImage('assets/profile.jpg'),
+                    // backgroundImage: AssetImage('assets/profile.jpg'),
                   ),
                   const SizedBox(width: 12),
                   Column(
