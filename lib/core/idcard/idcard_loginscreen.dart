@@ -114,8 +114,10 @@ class IdCardLoginScreen extends StatelessWidget {
                   const SizedBox(height: 40),
 
                   // ปุ่มเสียบบัตรประชาชน
-                  GestureDetector(
-                    onTap: () => _onInsertCard(context),
+                  InkWell(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/idcardinsert');
+                    },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                       decoration: BoxDecoration(
