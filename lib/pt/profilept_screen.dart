@@ -150,7 +150,7 @@ class ProfilePtScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(28),
                             onTap: () {
                               // TODO: กำหนดเส้นทางปลายทางตามฟลว์ของคุณ
-                              // Navigator.pushNamed(context, '/next_step');
+                              Navigator.pushNamed(context, '/mainpt');
                             },
                             child: const Center(
                               child: Text(
