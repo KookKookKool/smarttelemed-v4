@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'app_colors.dart';
 
 class CircleBackground extends StatelessWidget {
   final Widget? child;
@@ -22,6 +21,7 @@ class CircleBackground extends StatelessWidget {
         return SizedBox.expand(
           child: Stack(
             children: [
+              Container(color: Colors.white),
               // Left circle with Gaussian blur effect
               Positioned(
                 top: topOffset,
