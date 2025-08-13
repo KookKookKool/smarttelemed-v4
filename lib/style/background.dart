@@ -21,7 +21,6 @@ class CircleBackground extends StatelessWidget {
         return SizedBox.expand(
           child: Stack(
             children: [
-              // พื้นหลังขาวสุด
               Container(color: Colors.white),
               // Left circle with Gaussian blur effect
               Positioned(
