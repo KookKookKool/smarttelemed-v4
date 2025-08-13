@@ -13,6 +13,8 @@ import 'package:smarttelemed_v4/core/vhv/dashboard_screen.dart';
 import 'package:smarttelemed_v4/core/vhv/profile_screen.dart';
 import 'package:smarttelemed_v4/pt/idcard/idcard_pt_insertscreen.dart';
 import 'package:smarttelemed_v4/pt/idcard/idcard_pt_loader.dart';
+import 'package:smarttelemed_v4/pt/profilept_screen.dart';
+import 'package:smarttelemed_v4/pt/mainpt_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -43,6 +45,8 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfileScreen(),
         '/addcardpt': (context) => const IdCardPtInsertScreen(),
         '/idcardptloader': (context) => const IdCardPtLoader(),
+        '/profilept': (context) => const ProfilePtScreen(),
+        '/mainpt': (context) => const MainPtScreen(),
         // เพิ่ม routes อื่นๆ ตามต้องการ
       },
     );
