@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
-import 'core/splash/plus_loader.dart';
-import 'core/splash/splash_screen.dart';
-import 'core/auth/auth_screen.dart';
-import 'core/vhv/login_token.dart';
-import 'core/vhv/login_qrcam.dart';
+import 'package:smarttelemed_v4/core/vhv/device_screen.dart';
+import 'package:smarttelemed_v4/core/vhv/login_qrcam.dart';
+import 'package:smarttelemed_v4/core/vhv/login_token.dart';
+import 'package:smarttelemed_v4/core/vhv/device_screen.dart';
+import 'package:smarttelemed_v4/core/splash/plus_loader.dart';
+import 'package:smarttelemed_v4/core/auth/auth_screen.dart';
+import 'package:smarttelemed_v4/core/splash/splash_screen.dart';
+import 'package:smarttelemed_v4/core/idcard/idcard_loginscreen.dart';
+import 'package:smarttelemed_v4/core/idcard/idcard_insertscreen.dart';
+import 'package:smarttelemed_v4/core/idcard/idcard_loader.dart';
+import 'package:smarttelemed_v4/core/vhv/dashboard_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -26,6 +32,11 @@ class MyApp extends StatelessWidget {
         '/auth': (context) => const AuthScreen(),
         '/loginToken': (context) => const LoginTokenPage(),
         '/loginQRCam': (context) => const LoginQrCamPage(),
+        '/device': (context) => const DeviceScreen(),
+        '/idcardlog': (context) => const IdCardLoginScreen(),
+        '/idcardinsert': (context) => const IdCardInsertScreen(),
+        '/idcardloader': (context) => const IdCardLoader(),
+        '/dashboard': (context) => const DashboardScreen(),
         // เพิ่ม routes อื่นๆ ตามต้องการ
       },
     );

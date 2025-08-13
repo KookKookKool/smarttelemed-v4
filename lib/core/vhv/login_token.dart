@@ -12,7 +12,7 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
   final TextEditingController _tokenController = TextEditingController();
   String? _errorText;
 
-  void _onConfirm() {
+    void _onConfirm() {
     final token = _tokenController.text.trim();
     if (token.isEmpty) {
       setState(() {
@@ -20,12 +20,16 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
       });
       return;
     }
+    if (token.length != 13) {
+      setState(() {
+        _errorText = 'กรุณากรอก Token ให้ครบ 13 หลัก';
+      });
+      return;
+    }
     setState(() {
       _errorText = null;
     });
-    // TODO: ใช้งาน token ต่อ เช่น ส่งไป validate หรือ navigate
-    print('Token: $token');
-    // Navigator.pushNamed(context, '/nextPage');
+    Navigator.pushNamed(context, '/device');
   }
 
   @override
