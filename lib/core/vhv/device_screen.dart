@@ -12,7 +12,7 @@ class DeviceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return CircleBackground(
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color.fromARGB(0, 255, 255, 255),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
