@@ -13,6 +13,8 @@ import 'package:smarttelemed_v4/core/vhv/dashboard_screen.dart';
 import 'package:smarttelemed_v4/core/vhv/profile_screen.dart';
 import 'package:smarttelemed_v4/pt/idcard/idcard_pt_insertscreen.dart';
 import 'package:smarttelemed_v4/pt/idcard/idcard_pt_loader.dart';
+import 'package:smarttelemed_v4/pt/profilept_screen.dart';
+import 'package:smarttelemed_v4/pt/mainpt_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -43,6 +45,8 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfileScreen(),
         '/addcardpt': (context) => const IdCardPtInsertScreen(),
         '/idcardptloader': (context) => const IdCardPtLoader(),
+        '/profilept': (context) => const ProfilePtScreen(),
+        '/mainpt': (context) => const MainPtScreen(),
         // เพิ่ม routes อื่นๆ ตามต้องการ
       },
     );
@@ -70,20 +74,20 @@ class _PlusLoaderPageState extends State<PlusLoaderPage> {
   }
 
   void _goToAuthScreen() async {
-  if (!mounted) return;
-  setState(() {
-    _zooming = true;
-  });
-  await Future.delayed(const Duration(milliseconds: 900));
-  if (!mounted) return;
-  Navigator.of(context).pushReplacement(
-    PageRouteBuilder(
-      pageBuilder: (context, animation1, animation2) => const AuthScreen(),
-      transitionDuration: Duration.zero,
-      reverseTransitionDuration: Duration.zero,
-    ),
-  );
-}
+    if (!mounted) return;
+    setState(() {
+      _zooming = true;
+    });
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation1, animation2) => const AuthScreen(),
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -99,10 +103,7 @@ class _PlusLoaderPageState extends State<PlusLoaderPage> {
           child: AnimatedOpacity(
             opacity: _zooming ? 1.0 : 1.0,
             duration: const Duration(milliseconds: 900),
-            child: PlusLoader(
-              size: 120,
-              onCompleted: _goToAuthScreen,
-            ),
+            child: PlusLoader(size: 120, onCompleted: _goToAuthScreen),
           ),
         ),
       ),

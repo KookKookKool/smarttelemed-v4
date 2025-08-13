@@ -17,7 +17,10 @@ class ProfilePtScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFE8FFF7), Color(0xFFFFFFFF)], // ไล่เฉดอ่อนแบบในภาพ
+            colors: [
+              Color(0xFFE8FFF7),
+              Color(0xFFFFFFFF),
+            ], // ไล่เฉดอ่อนแบบในภาพ
           ),
         ),
         child: SafeArea(
@@ -25,7 +28,10 @@ class ProfilePtScreen extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints.tightFor(width: contentWidth),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -43,8 +49,9 @@ class ProfilePtScreen extends StatelessWidget {
                           child: Image.asset(
                             'assets/logo.png', // ← แก้ path ให้ตรงกับโปรเจกต์
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
-                                const Center(child: Icon(Icons.local_hospital, size: 24)),
+                            errorBuilder: (_, __, ___) => const Center(
+                              child: Icon(Icons.local_hospital, size: 24),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -53,12 +60,18 @@ class ProfilePtScreen extends StatelessWidget {
                           children: const [
                             Text(
                               'โรงพยาบาลอีเอสเอ็ม',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             SizedBox(height: 2),
                             Text(
                               'E.S.M Solution Hospital',
-                              style: TextStyle(fontSize: 12, color: Colors.black54),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                              ),
                             ),
                           ],
                         ),
@@ -92,7 +105,10 @@ class ProfilePtScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     const Text(
                       'HN 123456-78',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
 
                     const SizedBox(height: 20),
@@ -150,7 +166,7 @@ class ProfilePtScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(28),
                             onTap: () {
                               // TODO: กำหนดเส้นทางปลายทางตามฟลว์ของคุณ
-                              // Navigator.pushNamed(context, '/next_step');
+                              Navigator.pushNamed(context, '/mainpt');
                             },
                             child: const Center(
                               child: Text(
@@ -187,15 +203,15 @@ class _FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Align(
-        alignment: Alignment.centerLeft,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Text(
-            text,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-        ),
-      );
+    alignment: Alignment.centerLeft,
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+    ),
+  );
 }
 
 class _ReadOnlyPill extends StatelessWidget {
@@ -204,24 +220,24 @@ class _ReadOnlyPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        height: 52, // ขนาด pill ให้ใกล้เคียงภาพ
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.92),
-          borderRadius: BorderRadius.circular(26),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
-            ),
-          ],
+    height: 52, // ขนาด pill ให้ใกล้เคียงภาพ
+    alignment: Alignment.centerLeft,
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    decoration: BoxDecoration(
+      color: Colors.white.withOpacity(0.92),
+      borderRadius: BorderRadius.circular(26),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          blurRadius: 8,
+          offset: const Offset(0, 3),
         ),
-        child: Text(
-          value,
-          style: const TextStyle(fontSize: 14, color: Colors.black87),
-          overflow: TextOverflow.ellipsis,
-        ),
-      );
+      ],
+    ),
+    child: Text(
+      value,
+      style: const TextStyle(fontSize: 14, color: Colors.black87),
+      overflow: TextOverflow.ellipsis,
+    ),
+  );
 }
