@@ -32,8 +32,8 @@ class CircleBackground extends StatelessWidget {
                     sigmaY: leftCircleBlur,
                   ),
                   child: Container(
-                    width: 200,
-                    height: 200,
+                    width: 260,
+                    height: 260,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
@@ -55,8 +55,8 @@ class CircleBackground extends StatelessWidget {
                     sigmaY: rightCircleBlur,
                   ),
                   child: Container(
-                    width: 200,
-                    height: 200,
+                    width: 260,
+                    height: 260,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
