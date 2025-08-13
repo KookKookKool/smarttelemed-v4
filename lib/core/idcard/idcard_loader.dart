@@ -46,7 +46,7 @@ class _IdCardLoaderState extends State<IdCardLoader> {
 
             // ข้อความ
             const Text(
-              'กรุณาเสียบบัตรประชาชน\nเพื่อเข้าสู่ระบบ อสม.',
+              'กำลังอ่านบัตรประชาชน',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 20,
