@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smarttelemed_v4/style/app_colors.dart';
 import 'login_qrcam.dart';
 
 class LoginTokenPage extends StatefulWidget {
@@ -12,7 +13,7 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
   final TextEditingController _tokenController = TextEditingController();
   String? _errorText;
 
-    void _onConfirm() {
+  void _onConfirm() {
     final token = _tokenController.text.trim();
     if (token.isEmpty) {
       setState(() {
@@ -41,32 +42,65 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: const Text(''),
         backgroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: ShaderMask(
+              shaderCallback: (rect) =>
+                  AppColors.mainGradient.createShader(rect),
+              child: const Icon(Icons.qr_code, color: Colors.white),
+            ),
+            onPressed: () async {
+              final result = await Navigator.of(context).push(
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const LoginQrCamPage(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(0.0, 1.0);
+                        const end = Offset.zero;
+                        const curve = Curves.ease;
+                        final tween = Tween(
+                          begin: begin,
+                          end: end,
+                        ).chain(CurveTween(curve: curve));
+                        return SlideTransition(
+                          position: animation.drive(tween),
+                          child: child,
+                        );
+                      },
+                ),
+              );
+              if (result != null && result is String) {
+                setState(() {
+                  _tokenController.text = result;
+                });
+              }
+            },
+          ),
+        ],
+        title: const Text(''),
+        centerTitle: true,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Center(
           child: SingleChildScrollView(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
-                Image.asset(
-                  'assets/logo.png',
-                  width: 180,
-                  height: 180,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 20),
+                // โลโก้และชื่อ
+                const SizedBox(height: 16),
+                Image.asset('assets/logo.png', width: 120, height: 120),
+                const SizedBox(height: 8),
+                // Label
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Padding(
@@ -81,56 +115,58 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: 280,
-                  height: 38,
+                // Input
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                   child: TextField(
                     controller: _tokenController,
                     decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
+                      border: InputBorder.none,
                       hintText: 'ESM123456790',
                       errorText: _errorText,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.qr_code),
-                        onPressed: () async {
-                          final result = await Navigator.of(context).push(
-                            PageRouteBuilder(
-                              pageBuilder: (context, animation, secondaryAnimation) => const LoginQrCamPage(),
-                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                const begin = Offset(0.0, 1.0);
-                                const end = Offset.zero;
-                                const curve = Curves.ease;
-                                final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                                return SlideTransition(
-                                  position: animation.drive(tween),
-                                  child: child,
-                                );
-                              },
-                            ),
-                          );
-                          if (result != null && result is String) {
-                            setState(() {
-                              _tokenController.text = result;
-                            });
-                          }
-                        },
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
                       ),
                     ),
                     style: const TextStyle(fontSize: 16),
                   ),
                 ),
-                const SizedBox(height: 30),
-                ElevatedButton(
-                  onPressed: _onConfirm,
-                  child: const Text('ยืนยัน'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 13, 255, 150),
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                    textStyle: const TextStyle(fontSize: 16),
+                const SizedBox(height: 32),
+                // ปุ่มยืนยัน
+                SizedBox(
+                  width: 180,
+                  height: 48,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.mainGradient,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.gradientStart.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _onConfirm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'ยืนยัน',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      ),
+                    ),
                   ),
                 ),
               ],
