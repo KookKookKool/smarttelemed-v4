@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smarttelemed_v4/widget/manubar.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -6,6 +7,7 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: const Manubar(),
       backgroundColor: const Color(0xFFF6F9FB),
       body: SafeArea(
         child: Column(
@@ -39,8 +41,8 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         const CircleAvatar(
                           radius: 60,
-                          backgroundImage: NetworkImage(
-                              "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d"), // ตัวอย่าง
+                          // backgroundImage: NetworkImage(
+                          //     "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d"), // ตัวอย่าง
                         ),
                         Positioned(
                           bottom: 0,
@@ -153,22 +155,6 @@ class ProfileScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-
-      // Bottom Navigation
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 2,
-        onTap: (index) {
-          // TODO: handle navigation
-        },
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined), label: ""),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.add_circle_outline), label: ""),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined), label: ""),
-        ],
       ),
     );
   }
