@@ -99,44 +99,44 @@ class _IdCardPtLoaderState extends State<IdCardPtLoader> {
                         child: Image.asset('assets/card.png', height: 250),
                       ),
                       const SizedBox(height: 40),
-                      // ปุ่มสำเร็จ
-                      SizedBox(
-                        width: 114,
-                        height: 41,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: AppColors.mainGradient,
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.gradientStart.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              elevation: 0,
-                            ),
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/idcardptloader');
-                            },
-                            child: const Text(
-                              'สำเร็จ',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                      // // ปุ่มสำเร็จ
+                      // SizedBox(
+                      //   width: 114,
+                      //   height: 41,
+                      //   child: DecoratedBox(
+                      //     decoration: BoxDecoration(
+                      //       gradient: AppColors.mainGradient,
+                      //       borderRadius: BorderRadius.circular(30),
+                      //       boxShadow: [
+                      //         BoxShadow(
+                      //           color: AppColors.gradientStart.withOpacity(0.2),
+                      //           blurRadius: 8,
+                      //           offset: Offset(0, 4),
+                      //         ),
+                      //       ],
+                      //     ),
+                      //     child: ElevatedButton(
+                      //       style: ElevatedButton.styleFrom(
+                      //         backgroundColor: Colors.transparent,
+                      //         shadowColor: Colors.transparent,
+                      //         shape: RoundedRectangleBorder(
+                      //           borderRadius: BorderRadius.circular(30),
+                      //         ),
+                      //         elevation: 0,
+                      //       ),
+                      //       onPressed: () {
+                      //         Navigator.pushNamed(context, '/idcardptloader');
+                      //       },
+                      //       child: const Text(
+                      //         'สำเร็จ',
+                      //         style: TextStyle(
+                      //           fontSize: 18,
+                      //           color: Colors.white,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
                       const SizedBox(height: 24),
                       // text for no ID card
                       Text(
