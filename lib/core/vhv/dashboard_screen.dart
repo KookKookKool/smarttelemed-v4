@@ -32,9 +32,12 @@ class DashboardScreen extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CircleAvatar(
-                      radius: 30,
-                      // backgroundImage: AssetImage('assets/profile.jpg'),
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, '/profile'),
+                      child: const CircleAvatar(
+                        radius: 30,
+                        // backgroundImage: AssetImage('assets/profile.jpg'),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -83,7 +86,7 @@ class DashboardScreen extends StatelessWidget {
 
               // ปุ่ม รายชื่อ
               GestureDetector(
-                onTap: () => Navigator.pushNamed(context, '/profile'),
+                onTap: () => Navigator.pushNamed(context, '/appointtable'),
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
                   padding: const EdgeInsets.all(16),

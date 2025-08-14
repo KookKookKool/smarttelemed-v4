@@ -41,7 +41,7 @@ class IdCardPtInsertScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       // ข้อความ
                       const Text(
-                        'กรุณาเสียบบัตรประชาชน\nเพื่อเข้าสู่ระบบ อสม.',
+                        'กรุณาเสียบบัตรประชาชน\n ผู้เข้ารับการรักษา',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 20,
@@ -63,8 +63,8 @@ class IdCardPtInsertScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       // ช่องอ่านบัตร
                       Container(
-                        width: 150,
-                        height: 20,
+                        width: 200,
+                        height: 15,
                         decoration: BoxDecoration(
                           color: Colors.black87,
                           borderRadius: BorderRadius.circular(10),
@@ -77,17 +77,17 @@ class IdCardPtInsertScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 0),
                       // บัตรประชาชน (หมุน 90 องศา)
                       Transform.rotate(
                         angle: 0,
-                        child: Image.asset('assets/card.png', height: 150),
+                        child: Image.asset('assets/card.png', height: 250),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 40),
                       // ปุ่มสำเร็จ
                       SizedBox(
-                        width: 180,
-                        height: 48,
+                        width: 114,
+                        height: 41,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             gradient: AppColors.mainGradient,

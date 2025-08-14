@@ -49,7 +49,7 @@ class IdCardInsertScreen extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
                       // ลูกศรชี้ขึ้น
                       ShaderMask(
                         shaderCallback: (rect) =>
@@ -63,8 +63,8 @@ class IdCardInsertScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       // ช่องอ่านบัตร
                       Container(
-                        width: 150,
-                        height: 20,
+                        width: 200,
+                        height: 15,
                         decoration: BoxDecoration(
                           color: Colors.black87,
                           borderRadius: BorderRadius.circular(10),
@@ -77,17 +77,17 @@ class IdCardInsertScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 0),
                       // บัตรประชาชน (หมุน 90 องศา)
                       Transform.rotate(
                         angle: 0,
-                        child: Image.asset('assets/card.png', height: 150),
+                        child: Image.asset('assets/card.png', height: 250),
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 40),
                       // ปุ่มสำเร็จ
                       SizedBox(
-                        width: 180,
-                        height: 48,
+                        width: 114,
+                        height: 41,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             gradient: AppColors.mainGradient,
@@ -115,7 +115,7 @@ class IdCardInsertScreen extends StatelessWidget {
                             child: const Text(
                               'สำเร็จ',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 color: Colors.white,
                               ),
                             ),

@@ -11,7 +11,7 @@ class ProfilePtScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: const Manubar(),
+      bottomNavigationBar: const Manubar(currentIndex: 1),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

@@ -6,19 +6,13 @@ class IdCardLoginScreen extends StatelessWidget {
   const IdCardLoginScreen({Key? key}) : super(key: key);
 
   void _onInsertCard(BuildContext context) {
-    // ตัวอย่าง: แสดง dialog
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('เสียบบัตรประชาชน'),
-        content: const Text(
-          'ฟีเจอร์นี้จะเชื่อมต่อกับเครื่องอ่านบัตรประชาชนในอนาคต',
-        ),
+        content: const Text('ฟีเจอร์นี้จะเชื่อมต่อกับเครื่องอ่านบัตรประชาชนในอนาคต'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('ปิด'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ปิด')),
         ],
       ),
     );
@@ -37,11 +31,8 @@ class IdCardLoginScreen extends StatelessWidget {
             onPressed: () => Navigator.pop(context),
           ),
           title: const Text(
-            'เข้าสู่ระบบ',
-            style: TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.w600,
-            ),
+            '',
+            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600),
           ),
           centerTitle: true,
         ),
@@ -53,86 +44,86 @@ class IdCardLoginScreen extends StatelessWidget {
                 children: [
                   // โลโก้กลาง
                   Image.asset('assets/logo.png', height: 80),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 35),
+
                   // หัวข้อ
                   const Text(
                     'เข้าสู่ระบบการใช้งาน',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                   ),
-                  const SizedBox(height: 32),
-                  // กรอกเลขบัตรประชาชน
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.85),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 12,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        labelText: 'เลขบัตรประชาชน',
-                        labelStyle: TextStyle(color: Colors.grey[700]),
-                        prefixIcon: const Icon(
-                          Icons.credit_card,
-                          color: AppColors.gradientStart,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
-                        ),
-                      ),
-                      keyboardType: TextInputType.number,
-                      maxLength: 13,
-                      style: const TextStyle(fontSize: 18),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  // กรอกวันเดือนปีเกิด
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.85),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 12,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        labelText: 'วันเดือนปีเกิด',
-                        labelStyle: TextStyle(color: Colors.grey[700]),
-                        prefixIcon: const Icon(
-                          Icons.cake,
-                          color: AppColors.gradientEnd,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 18,
-                        ),
-                      ),
-                      keyboardType: TextInputType.datetime,
-                      style: const TextStyle(fontSize: 18),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  // ปุ่มยืนยัน
+                  const SizedBox(height: 60),
+
+                  // ───────── กล่องกรอกเลขบัตรประชาชน (w:250, h:38)
                   SizedBox(
-                    width: 180,
-                    height: 48,
+                    width: 250,
+                    height: 38,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(50),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
+                        ],
+                      ),
+                      child: TextField(
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.next,
+                        maxLength: 13,
+                        textAlignVertical: TextAlignVertical.center,
+                        decoration: InputDecoration(
+                          hintText: 'เลขบัตรประชาชน',
+                          hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+                          prefixIcon: const Icon(Icons.credit_card, size: 18, color: AppColors.gradientStart),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                          isDense: true,
+                          isCollapsed: true, // ⬅️ บังคับให้กล่องเตี้ยตาม 38
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                          counterText: '', // ⬅️ ซ่อนตัวนับอักษร
+                        ),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 15),
+
+                  // ───────── กล่องกรอกวันเดือนปีเกิด (w:250, h:38)
+                  SizedBox(
+                    width: 250,
+                    height: 38,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(50),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
+                        ],
+                      ),
+                      child: TextField(
+                        keyboardType: TextInputType.datetime,
+                        textAlignVertical: TextAlignVertical.center,
+                        decoration: InputDecoration(
+                          hintText: 'วันเดือนปีเกิด',
+                          hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+                          prefixIcon: const Icon(Icons.cake, size: 18, color: AppColors.gradientEnd),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                          isDense: true,
+                          isCollapsed: true, // ⬅️ บังคับให้กล่องเตี้ยตาม 38
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // ปุ่มยืนยัน (คงเดิม)
+                  SizedBox(
+                    width: 114,
+                    height: 41,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: AppColors.mainGradient,
@@ -141,7 +132,7 @@ class IdCardLoginScreen extends StatelessWidget {
                           BoxShadow(
                             color: AppColors.gradientStart.withOpacity(0.2),
                             blurRadius: 8,
-                            offset: Offset(0, 4),
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
@@ -150,34 +141,25 @@ class IdCardLoginScreen extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'ยืนยัน',
-                          style: TextStyle(fontSize: 18, color: Colors.white),
-                        ),
+                        child: const Text('ยืนยัน', style: TextStyle(fontSize: 14, color: Colors.white)),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 40),
+
+                  const SizedBox(height: 150),
+
                   // ปุ่มเสียบบัตรประชาชน
                   TextButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/idcardinsert');
-                    },
-                    child: Text(
+                    onPressed: () => Navigator.pushNamed(context, '/idcardinsert'),
+                    child: const Text(
                       'เสียบบัตรประชาชน',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w600),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),

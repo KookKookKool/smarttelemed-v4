@@ -19,31 +19,34 @@ class MenuSection extends StatelessWidget {
             ),
           ),
         ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: const [
-            MenuActionButton(
-              icon: Icons.edit_note,
-              label: 'บันทึก',
-              color: Colors.teal,
-            ),
-            MenuActionButton(
-              icon: Icons.cleaning_services,
-              label: 'สะอาด',
-              color: Colors.teal,
-            ),
-            MenuActionButton(
-              icon: Icons.emoji_emotions,
-              label: 'อารมณ์',
-              color: Colors.teal,
-            ),
-            MenuActionButton(
-              icon: Icons.create,
-              label: 'ทำนัด',
-              color: Colors.teal,
-            ),
-          ],
-        ),
+       Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 30),
+          child: Wrap(
+            alignment: WrapAlignment.start,
+            spacing: 33,
+            runSpacing: 12,
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/recordNote'),
+                child: const MenuActionButton(
+                  icon: Icons.edit_note,
+                  label: 'บันทึก',
+                  color: Colors.teal,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/makeAppointment'),
+                child: const MenuActionButton(
+                  icon: Icons.create, 
+                  label: 'ทำนัด', 
+                  color: Colors.teal
+                ),
+              ),
+              
+              const MenuActionButton(icon: Icons.add, label: 'เพิ่ม', color: Colors.teal),
+            ],
+          ),
+        )
       ],
     );
   }

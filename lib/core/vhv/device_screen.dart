@@ -25,8 +25,8 @@ class DeviceScreen extends StatelessWidget {
                   Center(
                     child: Image.asset(
                       'assets/logo.png',
-                      width: 180,
-                      height: 180,
+                      width: 167,
+                      height: 95,
                     ),
                   ),
                   const SizedBox(height: 16),

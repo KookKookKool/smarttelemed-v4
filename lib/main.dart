@@ -15,6 +15,15 @@ import 'package:smarttelemed_v4/pt/idcard/idcard_pt_insertscreen.dart';
 import 'package:smarttelemed_v4/pt/idcard/idcard_pt_loader.dart';
 import 'package:smarttelemed_v4/pt/profilept_screen.dart';
 import 'package:smarttelemed_v4/pt/mainpt_screen.dart';
+import 'package:smarttelemed_v4/core/appoint/appoint_screen.dart';
+import 'package:smarttelemed_v4/core/doctor/doctor_screen.dart';
+import 'package:smarttelemed_v4/core/appoint/appoint_table.dart';
+import 'package:smarttelemed_v4/core/notes/record_note_screen.dart';
+import 'package:smarttelemed_v4/core/video/videocall_screen.dart';
+import 'package:smarttelemed_v4/core/doctor/doctor_pending.dart';
+import 'package:smarttelemed_v4/core/appoint/make_appointment_screen.dart';
+import 'package:smarttelemed_v4/core/setting/setting_screen.dart';
+import 'package:smarttelemed_v4/core/doctor/doctor_result_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -47,6 +56,15 @@ class MyApp extends StatelessWidget {
         '/idcardptloader': (context) => const IdCardPtLoader(),
         '/profilept': (context) => const ProfilePtScreen(),
         '/mainpt': (context) => const MainPtScreen(),
+        '/appoint': (context) => const AppointScreen(),
+        '/doctor': (context) => const DoctorScreen(),
+        '/appointtable': (context) => const AppointTableScreen(),
+        '/recordNote': (context) => const RecordNoteScreen(),
+        '/videocall': (context) => const VideoCallScreen(),
+        '/doctorPending': (context) => const DoctorPendingScreen(), // ใช้สำหรับหน้ารอแพทย์
+        '/makeAppointment': (context) => const MakeAppointmentScreen(),
+        '/settings': (context) => const SettingScreen(),
+        '/doctorResult': (context) => const DoctorResultScreen(),
         // เพิ่ม routes อื่นๆ ตามต้องการ
       },
     );

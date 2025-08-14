@@ -97,9 +97,9 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // โลโก้และชื่อ
-                const SizedBox(height: 16),
-                Image.asset('assets/logo.png', width: 120, height: 120),
-                const SizedBox(height: 8),
+                
+                Image.asset('assets/logo.png', width: 167, height: 95),
+                const SizedBox(height: 130),
                 // Label
                 Align(
                   alignment: Alignment.centerLeft,
@@ -115,6 +115,7 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 8),
                 // Input
                 Container(
                   decoration: BoxDecoration(
@@ -128,18 +129,18 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
                       hintText: 'ESM123456790',
                       errorText: _errorText,
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
+                        horizontal: 30,
                         vertical: 14,
                       ),
                     ),
-                    style: const TextStyle(fontSize: 16),
+                    style: const TextStyle(fontSize: 14),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
                 // ปุ่มยืนยัน
                 SizedBox(
-                  width: 180,
-                  height: 48,
+                  width: 114,
+                  height: 41,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: AppColors.mainGradient,
@@ -164,7 +165,7 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
                       ),
                       child: const Text(
                         'ยืนยัน',
-                        style: TextStyle(fontSize: 18, color: Colors.white),
+                        style: TextStyle(fontSize: 14, color: Colors.white),
                       ),
                     ),
                   ),

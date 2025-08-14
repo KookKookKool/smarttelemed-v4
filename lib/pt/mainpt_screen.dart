@@ -7,11 +7,11 @@ class MainPtScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double contentWidth = 360; // คุมความกว้างให้ใกล้เคียงดีไซน์
+    const double contentWidth = 360;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: const Manubar(), // เชื่อม Bar ที่สร้างไว้
+      bottomNavigationBar: const Manubar(currentIndex: 1),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -33,7 +33,10 @@ class MainPtScreen extends StatelessWidget {
                     SizedBox(height: 14),
                     _PatientCard(),
                     SizedBox(height: 16),
-                    _CalendarPanel(),
+
+                    /// ⬇️ เปลี่ยนจาก _CalendarPanel() เป็นสไลด์ 4 หน้า
+                    _MainSlider(),
+
                     SizedBox(height: 20),
                     _QuickActionsRow(),
                   ],
@@ -62,26 +65,17 @@ class _HeaderHospital extends StatelessWidget {
             width: 36,
             height: 36,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const SizedBox(
-              width: 36,
-              height: 36,
-              child: Icon(Icons.local_hospital),
-            ),
+            errorBuilder: (_, __, ___) =>
+                const SizedBox(width: 36, height: 36, child: Icon(Icons.local_hospital)),
           ),
         ),
         const SizedBox(width: 12),
         const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'โรงพยาบาลอีเอสเอ็ม',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
+            Text('โรงพยาบาลอีเอสเอ็ม', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             SizedBox(height: 2),
-            Text(
-              'E.S.M Solution Hospital',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
-            ),
+            Text('E.S.M Solution Hospital', style: TextStyle(fontSize: 12, color: Colors.black54)),
           ],
         ),
       ],
@@ -89,7 +83,7 @@ class _HeaderHospital extends StatelessWidget {
   }
 }
 
-/// ───────────────── การ์ดผู้ป่วย (รูป + รายละเอียดย่อ)
+/// ───────────────── การ์ดผู้ป่วย
 class _PatientCard extends StatelessWidget {
   const _PatientCard({Key? key}) : super(key: key);
 
@@ -100,13 +94,7 @@ class _PatientCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: Offset(0, 6))],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,11 +106,8 @@ class _PatientCard extends StatelessWidget {
               width: 92,
               height: 72,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox(
-                width: 92,
-                height: 72,
-                child: Icon(Icons.person),
-              ),
+              errorBuilder: (_, __, ___) =>
+                  const SizedBox(width: 92, height: 72, child: Icon(Icons.person)),
             ),
           ),
           const SizedBox(width: 12),
@@ -130,20 +115,11 @@ class _PatientCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'นายสมใจ อิ่มบุญ',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
+                Text('นายสมใจ อิ่มบุญ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 SizedBox(height: 6),
-                Text(
-                  'วันเกิด 01 ม.ค. 2500 (อายุ 66 ปี)',
-                  style: TextStyle(fontSize: 13),
-                ),
+                Text('วันเกิด 01 ม.ค. 2500 (อายุ 66 ปี)', style: TextStyle(fontSize: 13)),
                 Text('กรุ๊ปเลือด โอ+', style: TextStyle(fontSize: 13)),
-                Text(
-                  'น้ำหนัก 70 กก. ส่วนสูง 175 ซม.',
-                  style: TextStyle(fontSize: 13),
-                ),
+                Text('น้ำหนัก 70 กก. ส่วนสูง 175 ซม.', style: TextStyle(fontSize: 13)),
                 Text('โรคประจำตัว', style: TextStyle(fontSize: 13)),
                 Text('ประวัติการแพ้', style: TextStyle(fontSize: 13)),
               ],
@@ -155,7 +131,127 @@ class _PatientCard extends StatelessWidget {
   }
 }
 
-/// ───────────────── แผงปฏิทิน (หัวข้อ + ปุ่มแก้ไข + ปฏิทิน)
+/// ───────────────── Main Slider: 4 หน้า (ปฏิทิน / Vital / พบแพทย์ / เยี่ยมบ้าน)
+class _MainSlider extends StatefulWidget {
+  const _MainSlider({Key? key}) : super(key: key);
+
+  @override
+  State<_MainSlider> createState() => _MainSliderState();
+}
+
+class _MainSliderState extends State<_MainSlider> {
+  final _controller = PageController();
+  int _index = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ✅ ให้สูงพอเสมอ (หน้าในเลื่อนเองได้ ไม่ล้น)
+    const double sliderHeight = 450;
+
+    Widget dot(int i) {
+      final active = _index == i;
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: active ? 18 : 8,
+        height: 8,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF00B3A8) : const Color(0xFFD5DDE1),
+          borderRadius: BorderRadius.circular(999),
+        ),
+      );
+    }
+
+    final tabs = const [
+      (Icons.calendar_month_rounded, 'วัน/เดือนนัดหมาย'),
+      (Icons.monitor_heart_rounded, 'ค่าสัญญาณชีพ'),
+      (Icons.assignment_ind_rounded, 'ประวัติพบแพทย์'),
+      (Icons.home_rounded, 'ประวัติเยี่ยมบ้าน'),
+    ];
+
+    Widget topTabs() => SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List.generate(tabs.length, (i) {
+              final selected = i == _index;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: () => _controller.animateToPage(
+                    i,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected ? const Color(0xFFE6FBF8) : Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: selected ? const Color(0xFF00B3A8) : const Color(0xFFE5E7EB),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(tabs[i].$1,
+                            size: 18,
+                            color: selected ? const Color(0xFF00B3A8) : Colors.black54),
+                        const SizedBox(width: 6),
+                        Text(
+                          tabs[i].$2,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: selected ? const Color(0xFF00B3A8) : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        topTabs(),
+        const SizedBox(height: 12),
+
+        // ✅ สูงพอ และให้แต่ละหน้าเลื่อนเองได้
+        SizedBox(
+          height: sliderHeight,
+          child: PageView(
+            controller: _controller,
+            onPageChanged: (i) => setState(() => _index = i),
+            children: const [
+              SingleChildScrollView(child: _CalendarPanel()),
+              SingleChildScrollView(child: _VitalHistoryTable()),
+              SingleChildScrollView(child: _DoctorVisitHistory()),
+              SingleChildScrollView(child: _HomeVisitHistory()),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(4, dot),
+        ),
+      ],
+    );
+  }
+}
+/// ───────────────── แผงปฏิทิน (ภายในสไลด์หน้า 1)
 class _CalendarPanel extends StatefulWidget {
   const _CalendarPanel({Key? key}) : super(key: key);
 
@@ -164,15 +260,11 @@ class _CalendarPanel extends StatefulWidget {
 }
 
 class _CalendarPanelState extends State<_CalendarPanel> {
-  // ให้หน้าเริ่มต้นเป็นเดือนกลาง (index = 1)
   late final PageController _page = PageController(initialPage: 1);
   int _active = 1;
-
-  // ตั้งฐานกลางเป็น Jan 2025 ตามภาพ
   final DateTime _base = DateTime(2025, 1, 1);
 
   DateTime _monthAt(int pageIndex) {
-    // page 0 = เดือนก่อนหน้า, page 1 = เดือนฐาน, page 2 = เดือนถัดไป
     final offset = pageIndex - 1;
     return DateTime(_base.year, _base.month + offset, 1);
   }
@@ -186,85 +278,61 @@ class _CalendarPanelState extends State<_CalendarPanel> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      // พื้นหลังเขียวอ่อนตามภาพ
-      decoration: BoxDecoration(
-        color: const Color(0xFFEFFAF5),
-        borderRadius: BorderRadius.circular(18),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFEFFAF5), borderRadius: BorderRadius.circular(18)),
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // หัวข้อ "ปฏิทิน" + ปุ่มดินสอ
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'ปฏิทิน',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
+              const Text('ปฏิทิน', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               IconButton(
-                onPressed: () {
-                  // TODO: แก้ไข/ไปหน้าตั้งค่านัด
-                },
+                onPressed: () {},
                 icon: const Icon(Icons.edit, size: 20, color: Colors.black54),
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints.tightFor(
-                  width: 32,
-                  height: 32,
-                ),
+                constraints: const BoxConstraints.tightFor(width: 32, height: 32),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          // การ์ดปฏิทิน
           Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-            child: LayoutBuilder(
-              builder: (context, c) {
-                // คำนวณความสูงจากความกว้างจริงของการ์ด
-                final w = c.maxWidth; // ความกว้างพื้นที่ในกล่องปฏิทิน
-                const rows = 6;
-                const spacing = 6.0;
-                final cell = w / 7; // ช่องเป็นจัตุรัส => สูงเท่ากว้าง
-                final gridH = cell * rows + spacing * (rows - 1);
-                // header = เดือน + เว้น + แถวชื่อวัน + เว้น
-                const headerH = 16.0 + 8.0 + 18.0 + 6.0;
-                final totalH = gridH + headerH;
-
-                return SizedBox(
-                  height: totalH, // ✅ พอดีกับคอลัมน์ของ _StaticCalendar
-                  child: PageView.builder(
-                    controller: _page,
-                    itemCount: 3, // ก่อนหน้า / ปัจจุบัน / ถัดไป
-                    onPageChanged: (i) => setState(() => _active = i),
-                    physics: const BouncingScrollPhysics(),
-                    itemBuilder: (context, i) {
-                      final dt = _monthAt(i);
-                      final isJan2025 = (dt.year == 2025 && dt.month == 1);
-                      return _StaticCalendar(
-                        year: dt.year,
-                        month: dt.month,
-                        markedDays: isJan2025 ? const [6, 18] : const [],
-                        selectedDay: isJan2025 ? 29 : null,
-                      );
-                    },
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                );
-              },
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+
+              // ⬇️ แทนที่ LayoutBuilder เดิมทั้งหมดด้วย AspectRatio
+              child: AspectRatio(
+                // อัตราส่วน ~กว้าง:สูง ให้สูงกว่า grid 6 แถวเล็กน้อยเพื่อกันล้น
+                aspectRatio: 1 / 1.20, // = กว้าง/สูง (สูง ≈ 1.20*กว้าง)
+
+                child: PageView.builder(
+                  controller: _page,
+                  itemCount: 3, // ก่อนหน้า / ปัจจุบัน / ถัดไป
+                  onPageChanged: (i) => setState(() => _active = i),
+                  physics: const BouncingScrollPhysics(),
+                  itemBuilder: (context, i) {
+                    final dt = _monthAt(i);
+                    final isJan2025 = (dt.year == 2025 && dt.month == 1);
+                    return _StaticCalendar(
+                      year: dt.year,
+                      month: dt.month,
+                      markedDays: isJan2025 ? const [6, 18] : const [],
+                      selectedDay: isJan2025 ? 29 : null,
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
           const SizedBox(height: 8),
           _DotsIndicator(activeIndex: _active, count: 3),
         ],
@@ -273,13 +341,12 @@ class _CalendarPanelState extends State<_CalendarPanel> {
   }
 }
 
-/// ปฏิทินแบบ Static ไม่พึ่งแพ็กเกจภายนอก — จัดหน้าให้เหมือนภาพ
+/// ───────────────── ปฏิทิน Static
 class _StaticCalendar extends StatelessWidget {
   final int year;
-  final int month; // 1-12
+  final int month;
   final List<int> markedDays;
   final int? selectedDay;
-
   const _StaticCalendar({
     Key? key,
     required this.year,
@@ -291,8 +358,7 @@ class _StaticCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final firstDay = DateTime(year, month, 1);
-    final firstWeekday = firstDay.weekday; // Mon=1 ... Sun=7
-    final offset = firstWeekday % 7; // Sun=0
+    final offset = firstDay.weekday % 7; // Sun=0
     final daysInMonth = DateTime(year, month + 1, 0).day;
 
     const weekLetters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -300,33 +366,17 @@ class _StaticCalendar extends StatelessWidget {
 
     return Column(
       children: [
-        Text(
-          '${_monthShort(month)} $year',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
+        Text('${_monthShort(month)} $year', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
-
-        // แถวอักษรวัน: กำหนดความสูงคงที่ให้เสถียร
         SizedBox(
           height: 18,
           child: Row(
             children: weekLetters
-                .map(
-                  (w) => Expanded(
-                    child: Center(
-                      child: Text(
-                        w,
-                        style: const TextStyle(color: Colors.black54),
-                      ),
-                    ),
-                  ),
-                )
+                .map((w) => Expanded(child: Center(child: Text(w, style: const TextStyle(color: Colors.black54)))))
                 .toList(),
           ),
         ),
         const SizedBox(height: spacing),
-
-        // ตารางวัน 7x6 — ช่องจัตุรัส ป้องกันล้น
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -340,8 +390,7 @@ class _StaticCalendar extends StatelessWidget {
           itemBuilder: (context, i) {
             final d = i - offset + 1;
             if (d < 1 || d > daysInMonth) return const SizedBox.shrink();
-
-            final isSelected = (selectedDay != null && d == selectedDay);
+            final isSelected = selectedDay != null && d == selectedDay;
             final isMarked = markedDays.contains(d);
 
             return LayoutBuilder(
@@ -356,31 +405,21 @@ class _StaticCalendar extends StatelessWidget {
                   children: [
                     if (isSelected)
                       Container(
-                        width: dayCircle,
-                        height: dayCircle,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFE53935),
-                          shape: BoxShape.circle,
-                        ),
+                        width: dayCircle, height: dayCircle,
+                        decoration: const BoxDecoration(color: Color(0xFFE53935), shape: BoxShape.circle),
                       ),
-                    Text(
-                      '$d',
-                      style: TextStyle(
-                        fontSize: font,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : Colors.black87,
-                      ),
-                    ),
+                    Text('$d',
+                        style: TextStyle(
+                          fontSize: font,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? Colors.white : Colors.black87,
+                        )),
                     if (!isSelected && isMarked)
                       Positioned(
                         bottom: size * 0.10,
                         child: Container(
-                          width: dot,
-                          height: dot,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFFFC400),
-                            shape: BoxShape.circle,
-                          ),
+                          width: dot, height: dot,
+                          decoration: const BoxDecoration(color: Color(0xFFFFC400), shape: BoxShape.circle),
                         ),
                       ),
                   ],
@@ -394,68 +433,198 @@ class _StaticCalendar extends StatelessWidget {
   }
 
   String _monthShort(int m) {
-    const names = [
-      '',
-      'Dec',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-    ];
-    // ถ้าอยากเรียงเริ่ม Jan ให้ใช้ชุดชื่อเดิมได้ ผมยกมาสั้นๆเพื่ออ่านง่าย
-    const full = [
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
+    const full = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return full[m];
   }
 }
 
-/// จุดบอกหน้า (สามจุดด้านล่างปฏิทิน)
+/// จุดบอกหน้าเล็ก ๆ ในปฏิทิน
 class _DotsIndicator extends StatelessWidget {
   final int activeIndex;
   final int count;
-  const _DotsIndicator({
-    Key? key,
-    required this.activeIndex,
-    required this.count,
-  }) : super(key: key);
+  const _DotsIndicator({Key? key, required this.activeIndex, required this.count}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(
+          count,
+          (i) {
+            final active = i == activeIndex;
+            return Container(
+              width: active ? 10 : 6,
+              height: active ? 10 : 6,
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: active ? const Color(0xFFBDBDBD) : const Color(0xFFE0E0E0),
+                shape: BoxShape.circle,
+              ),
+            );
+          },
+        ),
+      );
+}
+
+/// ───────────────── หน้า 2: ตารางประวัติค่าสัญญาณชีพ
+class _VitalHistoryTable extends StatelessWidget {
+  const _VitalHistoryTable({Key? key}) : super(key: key);
+
+  TableRow _header() => const TableRow(
+        decoration: BoxDecoration(color: Color(0xFFF4F6F8)),
+        children: [
+          _Th('Date\n(DD/MM/YY)'), _Th('BP\n(mmHg)'), _Th('PR\n(bpm)'),
+          _Th('RR\n(bpm)'), _Th('SpO2\n(%)'), _Th('BT\n(°C)'),
+        ],
+      );
+
+  TableRow _data(List<String> cols) =>
+      TableRow(decoration: const BoxDecoration(color: Colors.white), children: cols.map((e) => _Td(e)).toList());
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count, (i) {
-        final active = i == activeIndex;
-        return Container(
-          width: active ? 10 : 6,
-          height: active ? 10 : 6,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
+    final rows = <TableRow>[
+      _header(),
+      _data(const ['11/08/68', '140/90', '76', '20', '100', '36.7']),
+      _data(const ['', '', '', '', '', '']),
+      _data(const ['', '', '', '', '', '']),
+      _data(const ['', '', '', '', '', '']),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text('ประวัติค่าสัญญาณชีพ', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        ),
+        Container(
           decoration: BoxDecoration(
-            color: active ? const Color(0xFFBDBDBD) : const Color(0xFFE0E0E0),
-            shape: BoxShape.circle,
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 10, offset: Offset(0, 4))],
           ),
-        );
-      }),
+          child: Table(
+            columnWidths: const {
+              0: FlexColumnWidth(1.4),
+              1: FlexColumnWidth(1.1),
+              2: FlexColumnWidth(.9),
+              3: FlexColumnWidth(.9),
+              4: FlexColumnWidth(.9),
+              5: FlexColumnWidth(1.0),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            children: rows,
+          ),
+        ),
+      ],
     );
+  }
+}
+
+class _Th extends StatelessWidget {
+  final String text;
+  const _Th(this.text, {Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) =>
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        child: Text(text, textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)));
+}
+
+class _Td extends StatelessWidget {
+  final String text;
+  const _Td(this.text, {Key? key}) : super(key: key);
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB), width: .9)),
+        ),
+        child: Text(text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12.5)),
+      );
+}
+
+/// ───────────────── หน้า 3: ประวัติ “พบแพทย์”
+class _DoctorVisitHistory extends StatelessWidget {
+  const _DoctorVisitHistory({Key? key}) : super(key: key);
+
+  Widget _item({required String title, required String by}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 10, offset: Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              Text(by, style: const TextStyle(color: Colors.black54, fontSize: 12.5)),
+            ]),
+          ),
+          const SizedBox(width: 12),
+          const Icon(Icons.remove_red_eye_rounded, color: Color(0xFF00B3A8)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Padding(
+        padding: EdgeInsets.only(bottom: 8),
+        child: Text('ประวัติการพบแพทย์', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+      ),
+      _item(title: 'นัดวันที่ 11 สิงหาคม 2568', by: 'พบแพทย์โดย นพ.อนันต์ ใจดี'),
+      _item(title: 'นัดวันที่ 01 สิงหาคม 2568', by: 'พบแพทย์โดย นพ.อนันต์ ใจดี'),
+    ]);
+  }
+}
+
+/// ───────────────── หน้า 4: ประวัติ “เยี่ยมบ้าน”
+class _HomeVisitHistory extends StatelessWidget {
+  const _HomeVisitHistory({Key? key}) : super(key: key);
+
+  Widget _item({required String title, required String by}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 10, offset: Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(color: Color(0xFF1565C0), fontWeight: FontWeight.w700)),
+              const SizedBox(height: 2),
+              Text(by, style: const TextStyle(color: Colors.black54, fontSize: 12.5)),
+            ]),
+          ),
+          const SizedBox(width: 12),
+          const Icon(Icons.remove_red_eye_rounded, color: Color(0xFF00B3A8)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const Padding(
+        padding: EdgeInsets.only(bottom: 8),
+        child: Text('ประวัติการเยี่ยมบ้าน', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+      ),
+      _item(title: 'นัดวันที่ 11 สิงหาคม 2568', by: 'บันทึกโดย บส.สมใจ ยิ้มดี'),
+      _item(title: 'นัดวันที่ 01 สิงหาคม 2568', by: 'บันทึกโดย บส.สมใจ ยิ้มดี'),
+      _item(title: 'นัดวันที่ 22 กรกฎาคม 2568', by: 'บันทึกโดย บส.สมใจ ยิ้มดี'),
+    ]);
   }
 }
 
@@ -469,16 +638,8 @@ class _QuickActionsRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: const [
         _QuickAction(icon: Icons.search, label: 'ตรวจ', routeName: '/search'),
-        _QuickAction(
-          icon: Icons.medical_services_outlined,
-          label: 'พบแพทย์',
-          routeName: '/doctor',
-        ),
-        _QuickAction(
-          icon: Icons.calendar_month_outlined,
-          label: 'นัดหมาย',
-          routeName: '/appointment',
-        ),
+        _QuickAction(icon: Icons.medical_services_outlined, label: 'พบแพทย์', routeName: '/doctor'),
+        _QuickAction(icon: Icons.calendar_month_outlined, label: 'นัดหมาย', routeName: '/appoint'),
       ],
     );
   }
@@ -488,12 +649,7 @@ class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final String routeName;
-  const _QuickAction({
-    Key? key,
-    required this.icon,
-    required this.label,
-    required this.routeName,
-  }) : super(key: key);
+  const _QuickAction({Key? key, required this.icon, required this.label, required this.routeName}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -501,12 +657,9 @@ class _QuickAction extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       onTap: () {
         if (label == 'ตรวจ') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const VitalSignScreen()),
-          );
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const VitalSignScreen()));
         } else {
-          // Navigator.pushNamed(context, routeName);
+          Navigator.pushNamed(context, routeName);
         }
       },
       child: Column(
@@ -517,23 +670,12 @@ class _QuickAction extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: Offset(0, 4))],
             ),
-            child: Center(
-              child: Icon(icon, size: 36, color: const Color(0xFF00B3A8)),
-            ),
+            child: Center(child: Icon(icon, size: 36, color: const Color(0xFF00B3A8))),
           ),
           const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
-          ),
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
         ],
       ),
     );

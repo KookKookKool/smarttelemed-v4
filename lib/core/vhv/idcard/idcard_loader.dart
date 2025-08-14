@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:smarttelemed_v4/style/background_2.dart';
+import 'package:smarttelemed_v4/style/app_colors.dart';
 import 'dart:async';
 
 class IdCardLoader extends StatefulWidget {
@@ -19,42 +21,49 @@ class _IdCardLoaderState extends State<IdCardLoader> {
     });
   }
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // ปุ่ม Back
-            Align(
-              alignment: Alignment.centerLeft,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios, color: Colors.grey),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+    return CircleBackground2(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // ปุ่ม Back ซ้ายบน
+              Positioned(
+                top: 0,
+                left: 0,
+                child: IconButton(
+                  icon: ShaderMask(
+                    shaderCallback: (rect) =>
+                        AppColors.mainGradient.createShader(rect),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: Colors.white,
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-
-            // โลโก้ esm
-            Image.asset(
-              'assets/logo.png', // เพิ่มโลโก้ของคุณใน assets
-              height: 50,
-            ),
-            const SizedBox(height: 16),
-
-            // ข้อความ
-            const Text(
-              'กำลังอ่านบัตรประชาชน',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 20,
-                color: Colors.brown,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 20),
+              // เนื้อหา
+              Center(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 40),
+                      // โลโก้กลาง
+                      Image.asset('assets/logo.png', height: 80),
+                      const SizedBox(height: 16),
+                      // ข้อความ
+                      const Text(
+                        'กำลังอ่านบัตรประชาชน',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.black87,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
 
             // loading indicator
             const SizedBox(
@@ -69,37 +78,43 @@ class _IdCardLoaderState extends State<IdCardLoader> {
 
             // ช่องอ่านบัตร
             Container(
-              width: 150,
-              height: 20,
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                borderRadius: BorderRadius.circular(10),
+                        width: 200,
+                        height: 15,
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 0),
+                      // บัตรประชาชน (หมุน 90 องศา)
+                      Transform.rotate(
+                        angle: 0,
+                        child: Image.asset('assets/card.png', height: 250),
+                      ),
+                      const SizedBox(height: 40),
+                      
+                      const SizedBox(height: 24),
+                      // text for no ID card
+                      Text(
+                        'ไม่มีบัตรประชาชน',
+                        style: TextStyle(fontSize: 16, color: Colors.black),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-
-            // บัตรประชาชน (หมุน 90 องศา)
-            Transform.rotate(
-              angle: 0 * 3.1415926535 / 180, // หมุนเป็นเรเดียน
-              child: Image.asset(
-                'assets/card.png', // เพิ่มภาพบัตรใน assets
-                height: 150,
-              ),
-            ),
-            const Spacer(),
-
-            // ข้อความด้านล่าง
-            const Text(
-              'ไม่มีบัตรประชาชน',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
+            ],
+          ),
         ),
       ),
-    );
+     );
   }
 }
