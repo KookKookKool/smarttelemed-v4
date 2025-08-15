@@ -55,7 +55,7 @@ class DeviceScreen extends StatelessWidget {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      // Add your actions here
+                      _navigateTo(context, '/deviceConnect');
                     },
                     child: const Text('เชื่อมต่ออุปกรณ์'),
                     style: ElevatedButton.styleFrom(
