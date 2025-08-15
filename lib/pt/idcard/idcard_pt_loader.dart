@@ -43,6 +43,47 @@ class _IdCardPtLoaderState extends State<IdCardPtLoader> {
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
+              Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          // child: Image.asset(
+                          //   'assets/logo.png', // ← แก้ path ให้ตรงกับโปรเจกต์
+                          //   fit: BoxFit.cover,
+                          //   errorBuilder: (_, __, ___) => const Center(
+                          //     child: Icon(Icons.local_hospital, size: 24),
+                          //   ),
+                          // ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'โรงพยาบาลอีเอสเอ็ม',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'E.S.M Solution Hospital',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
               // เนื้อหา
               Center(
                 child: SingleChildScrollView(
@@ -51,8 +92,8 @@ class _IdCardPtLoaderState extends State<IdCardPtLoader> {
                     children: [
                       const SizedBox(height: 40),
                       // โลโก้กลาง
-                      Image.asset('assets/logo.png', height: 80),
-                      const SizedBox(height: 16),
+                      // Image.asset('assets/logo.png', height: 80),
+                      // const SizedBox(height: 16),
                       // ข้อความ
                       const Text(
                       'กำลังอ่านบัตรประชาชน',
