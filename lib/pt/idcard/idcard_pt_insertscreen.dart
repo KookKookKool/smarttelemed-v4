@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/background.dart';
 import 'package:smarttelemed_v4/style/app_colors.dart';
+import 'package:smarttelemed_v4/widget/manubar.dart';
 
 class IdCardPtInsertScreen extends StatelessWidget {
   const IdCardPtInsertScreen({Key? key}) : super(key: key);
@@ -133,6 +134,7 @@ class IdCardPtInsertScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              Positioned(left: 0, right: 0, bottom: 0, child: Manubar()),
             ],
           ),
         ),
