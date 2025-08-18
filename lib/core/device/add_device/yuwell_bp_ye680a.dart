@@ -130,7 +130,7 @@ class YuwellBpYe680a {
     return {
       'sys': sys.toStringAsFixed(0),
       'dia': dia.toStringAsFixed(0),
-      'map': map.toStringAsFixed(0),
+      // 'map': map.toStringAsFixed(0),
       'pul': pul?.toStringAsFixed(0) ?? '-', // อาจไม่มีในแพ็กเก็ต
       'unit': isKpa ? 'mmHg (from kPa)' : 'mmHg',
       'ts': ts?.toIso8601String() ?? '',
