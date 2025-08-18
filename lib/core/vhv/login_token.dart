@@ -15,21 +15,21 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
 
   void _onConfirm() {
     final token = _tokenController.text.trim();
-    if (token.isEmpty) {
-      setState(() {
-        _errorText = 'กรุณากรอก Token';
-      });
-      return;
-    }
-    if (token.length != 13) {
-      setState(() {
-        _errorText = 'กรุณากรอก Token ให้ครบ 13 หลัก';
-      });
-      return;
-    }
-    setState(() {
-      _errorText = null;
-    });
+    // if (token.isEmpty) {
+    //   setState(() {
+    //     _errorText = 'กรุณากรอก Token';
+    //   });
+    //   return;
+    // }
+    // if (token.length != 1) {
+    //   setState(() {
+    //     _errorText = 'กรุณากรอก Token ให้ครบ 13 หลัก';
+    //   });
+    //   return;
+    // }
+    // setState(() {
+    //   _errorText = null;
+    // });
     Navigator.pushNamed(context, '/device');
   }
 

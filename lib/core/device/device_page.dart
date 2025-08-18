@@ -1,332 +1,228 @@
-// device_page.dart
+// lib/core/device/device_page.dart
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
-/// หน้ารับค่าจาก Pulse Oximeter
-/// - รองรับอุปกรณ์ 2 แบบที่คุณใช้งานจริง:
-///   1) Yuwell : characteristic tail = ffe4  (vendor-specific)
-///      เฟรมตัวอย่าง: fe 0a 55 00 52 5f 17 70 cf 64
-///      => pulse = data[4], spo2 = data[5]
-///   2) อุปกรณ์ที่ใช้ UUID เต็ม: cdeacb81-5235-4c07-8846-93a37ee6b86d (vendor-specific)
-///      บ่อยครั้งส่งเฟรม "idle" เป็น 0x2d ('-') ซ้ำ ๆ จนเริ่มวัดจริง
-///
-/// ฟังก์ชันหลัก:
-///  - ค้นหา services/characteristics
-///  - subscribe characteristic ที่ notify ได้ (เจาะจง ffe4 และ service ที่มี cdeacb81… ก่อน)
-///  - แปลง payload เป็น SpO2/Pulse แบบ heuristic
-///  - แสดง RAW ต่อ characteristic เพื่อดีบัก
+// parsers
+import 'package:smarttelemed_v4/core/device/add_device/ua_651ble.dart';        // Stream<BpReading>
+import 'package:smarttelemed_v4/core/device/add_device/yuwell_bp_ye680a.dart'; // (ถ้ามีใช้)
+import 'package:smarttelemed_v4/core/device/add_device/yuwell_fpo_yx110.dart'; // Stream<Map<String,String>>
+import 'package:smarttelemed_v4/core/device/add_device/yuwell_yhw_6.dart';     // Stream<double> °C
+import 'package:smarttelemed_v4/core/device/add_device/yuwell_glucose.dart';   // Stream<Map<String,String>>
+import 'package:smarttelemed_v4/core/device/add_device/jumper_po_jpd_500f.dart'; // Jumper (ล็อกเฉพาะ chrCde81)
+
 class DevicePage extends StatefulWidget {
   final BluetoothDevice device;
-  const DevicePage({Key? key, required this.device}) : super(key: key);
+  const DevicePage({super.key, required this.device});
 
   @override
   State<DevicePage> createState() => _DevicePageState();
 }
 
 class _DevicePageState extends State<DevicePage> {
-  // เป้าหมายที่รู้จัก
-  static const String kTailFfe4 = 'ffe4';
-  static const String kFullCustom = 'cdeacb81-5235-4c07-8846-93a37ee6b86d';
-
-  bool _busy = false;
+  StreamSubscription? _sub;
+  Map<String, String> _latestData = {};
   String? _error;
-
   List<BluetoothService> _services = [];
-  final List<BluetoothCharacteristic> _subs = [];
-  final List<StreamSubscription<List<int>>> _valueSubs = [];
 
-  // readings
-  double? _spo2;
-  double? _pulse;
-  DateTime? _ts;
-
-  // raw cache
-  final Map<Guid, List<int>> _lastRawByChar = {};
+  // Known Services/Chars
+  // Blood Pressure
+  static final Guid svcBp      = Guid('00001810-0000-1000-8000-00805f9b34fb');
+  static final Guid chrBpMeas  = Guid('00002a35-0000-1000-8000-00805f9b34fb');
+  // Thermometer
+  static final Guid svcThermo  = Guid('00001809-0000-1000-8000-00805f9b34fb');
+  static final Guid chrTemp    = Guid('00002a1c-0000-1000-8000-00805f9b34fb');
+  // Glucose
+  static final Guid svcGlucose = Guid('00001808-0000-1000-8000-00805f9b34fb');
+  static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb');
+  // PLX (Oximeter standard)
+  static final Guid svcPlx     = Guid('00001822-0000-1000-8000-00805f9b34fb');
+  static final Guid chrPlxCont = Guid('00002a5f-0000-1000-8000-00805f9b34fb');
+  static final Guid chrPlxSpot = Guid('00002a5e-0000-1000-8000-00805f9b34fb');
+  // 🔒 Jumper: ใช้ “เฉพาะ characteristic” CDEACB81 (ไม่มี _svcCde80 อีกแล้ว)
+  static final Guid chrCde81   = Guid('cdeacb81-5235-4c07-8846-93a37ee6b86d');
+  // Yuwell-like
+  static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
+  static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
 
   @override
   void initState() {
     super.initState();
-    _discoverAndBind();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _setupByService());
   }
 
   @override
   void dispose() {
-    for (final s in _valueSubs) {
-      s.cancel();
-    }
-    _disableAllNotifySafely();
+    _sub?.cancel();
     super.dispose();
   }
 
-  Future<void> _discoverAndBind() async {
+  Future<void> _setupByService() async {
+    try {
+      _error = null;
+      setState(() {});
+
+      // กัน connect ซ้อน + หยุดสแกน
+      try { await FlutterBluePlus.stopScan(); } catch (_) {}
+
+      var st = await widget.device.connectionState.first;
+      if (st == BluetoothConnectionState.disconnected) {
+        await widget.device.connect(autoConnect: false, timeout: const Duration(seconds: 12));
+        st = await widget.device.connectionState
+            .where((s) => s == BluetoothConnectionState.connected || s == BluetoothConnectionState.disconnected)
+            .first
+            .timeout(const Duration(seconds: 12));
+        if (st != BluetoothConnectionState.connected) {
+          throw 'เชื่อมต่อไม่สำเร็จ (อุปกรณ์ปฏิเสธการเชื่อมต่อ)';
+        }
+      }
+
+      // Discover services (retry เผื่อครั้งแรกว่าง)
+      _services = [];
+      for (int i = 0; i < 3; i++) {
+        _services = await widget.device.discoverServices();
+        if (_services.isNotEmpty) break;
+        await Future.delayed(const Duration(milliseconds: 250));
+      }
+
+      // ---------- เลือก parser ตาม services/characteristics (เรียงความสำคัญ) ----------
+      // (1) Jumper: ใช้ “เฉพาะ” characteristic CDEACB81
+      if (_hasAnyChar(chrCde81)) {
+        final s = await JumperPoJpd500f(device: widget.device).parse(); // ตัว parser ล็อกอ่านเฉพาะ chrCde81 แล้ว
+        _listenMapStream(s);
+        return;
+      }
+
+      // (2) PLX มาตรฐาน
+      if (_hasSvc(svcPlx) && (_hasChr(svcPlx, chrPlxCont) || _hasChr(svcPlx, chrPlxSpot))) {
+        // ❗️ถ้าอยากล็อกเฉพาะ chrCde81 จริง ๆ ให้ลบบล็อกนี้ทิ้ง
+        final s = await JumperPoJpd500f(device: widget.device).parse();
+        _listenMapStream(s);
+        return;
+      }
+
+      // (3) FFE0/FFE4 → ให้พาร์เซอร์ Yuwell จัดการ
+      if (_hasSvc(svcFfe0) && _hasChr(svcFfe0, chrFfe4)) {
+        final s = await YuwellFpoYx110(device: widget.device).parse();
+        _listenMapStream(s);
+        return;
+      }
+
+      // (4) BP
+      if (_hasSvc(svcBp) && _hasChr(svcBp, chrBpMeas)) {
+        final s = await AdUa651Ble(device: widget.device).parse();
+        _listenBpStream(s);
+        return;
+      }
+
+      // (5) Thermometer
+      if (_hasSvc(svcThermo) && _hasChr(svcThermo, chrTemp)) {
+        final s = await YuwellYhw6(device: widget.device).parse();
+        _sub?.cancel();
+        _sub = s.listen(
+          (tempC) => _onData({'temp': tempC.toStringAsFixed(2)}),
+          onError: _onErr,
+        );
+        return;
+      }
+
+      // (6) Glucose
+      if (_hasSvc(svcGlucose) && _hasChr(svcGlucose, chrGluMeas)) {
+        final s = await YuwellGlucose(device: widget.device).parse();
+        _listenMapStream(s);
+        return;
+      }
+
+      // ไม่เข้าเงื่อนไขใด → แจ้งและโชว์รายการ UUID ให้ดู
+      _error = 'ยังจำแนกอุปกรณ์ไม่สำเร็จ (ไม่พบ Characteristic/Service ที่รองรับ)\n'
+               'ดูรายการ Service/Characteristic ด้านล่างเพื่อตรวจสอบ UUID';
+      setState(() {});
+    } catch (e) {
+      _onErr(e);
+    }
+
+    // เฝ้า disconnect
+    widget.device.connectionState.listen((s) {
+      if (s == BluetoothConnectionState.disconnected && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('อุปกรณ์ตัดการเชื่อมต่อ')),
+        );
+      }
+    });
+  }
+
+  // ---- Helpers: ตรวจ service/char ----
+  bool _hasSvc(Guid svc) => _services.any((s) => s.uuid == svc);
+
+  bool _hasChr(Guid svc, Guid chr) {
+    final s = _services.where((x) => x.uuid == svc);
+    if (s.isEmpty) return false;
+    return s.first.characteristics.any((c) => c.uuid == chr);
+  }
+
+  // NEW: ตรวจว่ามี characteristic ใด ๆ ที่ตรง GUID นี้ในทุก service หรือไม่
+  bool _hasAnyChar(Guid chr) {
+    for (final s in _services) {
+      for (final c in s.characteristics) {
+        if (c.uuid == chr) return true;
+      }
+    }
+    return false;
+  }
+
+  // ---- Listeners ----
+  void _listenMapStream(Stream<Map<String, String>> stream) {
+    _sub?.cancel();
+    _sub = stream.listen(_onData, onError: _onErr, cancelOnError: false);
+  }
+
+  void _listenBpStream(Stream<dynamic> stream) {
+    _sub?.cancel();
+    _sub = stream.listen((event) {
+      if (event is BpReading) {
+        _onData({
+          'sys': event.systolic.toStringAsFixed(0),
+          'dia': event.diastolic.toStringAsFixed(0),
+          'map': event.map.toStringAsFixed(0),
+          if (event.pulse != null) 'pul': event.pulse!.toStringAsFixed(0),
+          if (event.timestamp != null) 'ts': event.timestamp!.toIso8601String(),
+        });
+      } else if (event is Map) {
+        _onData(event.map((k, v) => MapEntry(k.toString(), v?.toString() ?? '')));
+      }
+    }, onError: _onErr, cancelOnError: false);
+  }
+
+  void _onData(Map<String, String> data) {
+    if (!mounted) return;
     setState(() {
-      _busy = true;
+      _latestData = data;
       _error = null;
     });
-
-    try {
-      // ให้แน่ใจว่าต่อสำเร็จ
-      final st = await widget.device.connectionState.first;
-      if (st != BluetoothConnectionState.connected) {
-        await widget.device.connect(timeout: const Duration(seconds: 10));
-      }
-
-      _services = await widget.device.discoverServices();
-
-      // 1) ถ้าพบ characteristic = cdeacb81… ให้ subscribe "ทุก notify-char ใน service เดียวกัน" ก่อน
-      final targets = <BluetoothCharacteristic>[];
-      Guid? cdeaServiceUuid;
-      for (final s in _services) {
-        for (final c in s.characteristics) {
-          if (c.uuid.str.toLowerCase() == kFullCustom) {
-            cdeaServiceUuid = s.uuid;
-            break;
-          }
-        }
-        if (cdeaServiceUuid != null) break;
-      }
-      if (cdeaServiceUuid != null) {
-        final svc = _services.firstWhere((s) => s.uuid == cdeaServiceUuid);
-        for (final c in svc.characteristics) {
-          if (c.properties.notify) targets.add(c);
-        }
-      }
-
-      // 2) เพิ่มเป้าหมาย tail = ffe4 (เช่น Yuwell)
-      for (final s in _services) {
-        for (final c in s.characteristics) {
-          if (!c.properties.notify) continue;
-          final u = c.uuid.str.toLowerCase();
-          final tail = u.length >= 4 ? u.substring(u.length - 4) : u;
-          if (tail == kTailFfe4 && !targets.contains(c)) {
-            targets.add(c);
-          }
-        }
-      }
-
-      // 3) ถ้ายังไม่เจออะไรเลย ให้ subscribe ทุก notify ทั้งอุปกรณ์ (เพื่อดู RAW)
-      if (targets.isEmpty) {
-        for (final s in _services) {
-          for (final c in s.characteristics) {
-            if (c.properties.notify) targets.add(c);
-          }
-        }
-        if (targets.isEmpty) {
-          setState(() {
-            _error = 'ไม่พบ characteristic แบบ Notify บนอุปกรณ์นี้';
-          });
-        }
-      }
-
-      await _subscribeMany(targets);
-    } catch (e) {
-      setState(() => _error = 'ค้นหาบริการ/สมัครรับค่าไม่สำเร็จ: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 
-  Future<void> _subscribeMany(List<BluetoothCharacteristic> chars) async {
-    await _disableAllNotifySafely();
-    _subs.clear();
-    for (final s in _valueSubs) {
-      await s.cancel();
-    }
-    _valueSubs.clear();
-    _lastRawByChar.clear();
-
-    for (final ch in chars) {
-      try {
-        await ch.setNotifyValue(true);
-        _subs.add(ch);
-
-        final sub = ch.lastValueStream.listen((data) {
-          // เก็บ raw
-          _lastRawByChar[ch.uuid] = List<int>.from(data);
-
-          // อัปเดต readings
-          _tryParseAndUpdate(ch.uuid, data);
-
-          if (mounted) setState(() {});
-        });
-        _valueSubs.add(sub);
-
-        // บางรุ่นต้อง read ครั้งแรกเพื่อ trigger notify
-        try {
-          await ch.read();
-        } catch (_) {}
-      } catch (e) {
-        _error = 'เปิด notify ไม่ได้ที่ ${_shortUuid(ch.uuid)}: $e';
-      }
-    }
+  void _onErr(Object e) {
+    if (!mounted) return;
+    setState(() => _error = '$e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('ผิดพลาด: $e')),
+    );
   }
 
-  Future<void> _disableAllNotifySafely() async {
-    for (final ch in _subs) {
-      try {
-        await ch.setNotifyValue(false);
-      } catch (_) {}
-    }
+  // ---- Value guards (กัน SPO2/PR เพี้ยน/สลับ) ----
+  int? _asInt(String? s) => s == null ? null : int.tryParse(s.trim());
+  int? _validSpo2(String? s) {
+    final n = _asInt(s);
+    if (n == null) return null;
+    return (n >= 70 && n <= 100) ? n : null;
+  }
+  int? _validPr(String? s) {
+    final n = _asInt(s);
+    if (n == null) return null;
+    return (n >= 30 && n <= 250) ? n : null;
   }
 
-  // -------------------- Parsing --------------------
-  void _tryParseAndUpdate(Guid uuid, List<int> data) {
-    if (data.isEmpty) return;
-
-    // 0) เพิกเฉยเฟรมว่าง เช่น 0x2d ('-') ซ้ำ ๆ หรือค่าซ้ำทั้งหมด
-    final allSame = data.every((b) => b == data[0]);
-    final mostlyDash = data.where((b) => b == 0x2d).length >= (data.length * 0.8);
-    if (allSame || mostlyDash) {
-      return; // ยังไม่อัปเดต จนกว่าจะมีเฟรมจริง
-    }
-
-    // A) เฟรม vendor ที่ขึ้นต้น 0xFE (เช่น Yuwell)
-    // ตัวอย่าง: fe 0a 55 00 52 5f 17 70 cf 64
-    // index:     0  1  2  3  4  5  6  7  8  9
-    // pulse = data[4], SpO2 = data[5]
-    if (data.length >= 6 && data[0] == 0xFE) {
-      final spo2Byte = data[5];
-      final pulseByte = data[4];
-
-      // เผื่อบางเฟรมใช้ pulse 16-bit LE ที่ index 2..3
-      int pulse16 = data[2] | ((data.length > 3 ? data[3] : 0) << 8);
-      final usePulse = _looksValidPulse(pulseByte)
-          ? pulseByte.toDouble()
-          : (_looksValidPulse(pulse16) ? pulse16.toDouble() : null);
-
-      if (_looksValidSpo2(spo2Byte) && usePulse != null) {
-        _setReading(spo2Byte.toDouble(), usePulse);
-        return;
-      }
-    }
-
-    // B) ASCII เช่น "98,75" หรือ "SpO2=98,P=75"
-    final ascii = _maybeAscii(data);
-    if (ascii != null) {
-      final parsed = _parseAsciiPayload(ascii);
-      if (parsed != null) {
-        _setReading(parsed.spo2, parsed.pulse);
-        return;
-      }
-    }
-
-    // C) โครงง่าย: [spo2(uint8), pulse(uint8), ...]
-    if (data.length >= 2) {
-      final v1 = data[0], v2 = data[1];
-      if (_looksValidSpo2(v1) && _looksValidPulse(v2)) {
-        _setReading(v1.toDouble(), v2.toDouble());
-        return;
-      }
-    }
-
-    // D) Header 0xAA: [0xAA, len, spo2, pulse]
-    if (data.length >= 4 && data[0] == 0xAA) {
-      final s = data[2], p = data[3];
-      if (_looksValidSpo2(s) && _looksValidPulse(p)) {
-        _setReading(s.toDouble(), p.toDouble());
-        return;
-      }
-    }
-
-    // E) Header 0x55 0xAA
-    if (data.length >= 6 && data[0] == 0x55 && data[1] == 0xAA) {
-      final s = data[2], p = data[3];
-      if (_looksValidSpo2(s) && _looksValidPulse(p)) {
-        _setReading(s.toDouble(), p.toDouble());
-        return;
-      }
-    }
-
-    // F) SFLOAT layout (คล้ายมาตรฐาน): [flags?, spo2 sfloat, pulse sfloat]
-    if (data.length >= 6) {
-      final s = _decodeSfloat16(data[2], data[3]);
-      final p = _decodeSfloat16(data[4], data[5]);
-      if (s != null && p != null && _looksValidSpo2(s) && _looksValidPulse(p)) {
-        _setReading(s, p);
-        return;
-      }
-    }
-  }
-
-  void _setReading(double? newSpo2, double? newPulse) {
-    bool changed = false;
-    if (newSpo2 != null && newSpo2 != _spo2) {
-      _spo2 = newSpo2;
-      changed = true;
-    }
-    if (newPulse != null && newPulse != _pulse) {
-      _pulse = newPulse;
-      changed = true;
-    }
-    if (changed) _ts = DateTime.now();
-  }
-
-  bool _looksValidSpo2(num v) => v >= 50 && v <= 100;
-  bool _looksValidPulse(num v) => v >= 20 && v <= 250;
-
-  String? _maybeAscii(List<int> data) {
-    // ไบต์ต้อง printable เกือบทั้งหมด
-    if (data.any((b) => b < 0x20 || b > 0x7E)) return null;
-    try {
-      final s = String.fromCharCodes(data);
-      if (s.contains(',') || s.toLowerCase().contains('spo') || s.contains('=')) {
-        return s.trim();
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// รองรับ: "98,75", "SpO2=98,P=75", "SPO2:98 PULSE:75"
-  _Reading? _parseAsciiPayload(String s) {
-    final lower = s.toLowerCase();
-
-    // รูปแบบ "98,75"
-    final csv = lower.split(',');
-    if (csv.length >= 2) {
-      final sp = double.tryParse(csv[0].replaceAll(RegExp(r'[^0-9.]'), ''));
-      final pr = double.tryParse(csv[1].replaceAll(RegExp(r'[^0-9.]'), ''));
-      if (sp != null && pr != null && _looksValidSpo2(sp) && _looksValidPulse(pr)) {
-        return _Reading(spo2: sp, pulse: pr);
-      }
-    }
-
-    // คีย์เวิร์ด
-    final spMatch = RegExp(r'(spo2|sp):?\s*([0-9]+(\.[0-9]+)?)').firstMatch(lower);
-    final prMatch = RegExp(r'(pulse|pr|hr):?\s*([0-9]+(\.[0-9]+)?)').firstMatch(lower);
-    if (spMatch != null && prMatch != null) {
-      final sp = double.tryParse(spMatch.group(2)!);
-      final pr = double.tryParse(prMatch.group(2)!);
-      if (sp != null && pr != null && _looksValidSpo2(sp) && _looksValidPulse(pr)) {
-        return _Reading(spo2: sp, pulse: pr);
-      }
-    }
-
-    return null;
-  }
-
-  /// IEEE‑11073 16‑bit SFLOAT: value = mantissa(12-bit signed) * 10^exponent(4-bit signed)
-  double? _decodeSfloat16(int b0, int b1) {
-    int raw = (b1 << 8) | b0;
-    int mantissa = raw & 0x0FFF;
-    int exponent = (raw & 0xF000) >> 12;
-    if ((mantissa & 0x0800) != 0) mantissa |= ~0x0FFF;
-    if ((exponent & 0x8) != 0) exponent |= ~0xF;
-    final val = mantissa * math.pow(10, exponent);
-    return val.toDouble();
-  }
-
-  String _hex(List<int> bytes) =>
-      bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
-
-  String _shortUuid(Guid u) {
-    final s = u.str.toLowerCase();
-    return s.length >= 4 ? s.substring(s.length - 4) : s;
-  }
-
+  // ---- UI ----
   @override
   Widget build(BuildContext context) {
     final name = widget.device.platformName.isNotEmpty
@@ -335,101 +231,120 @@ class _DevicePageState extends State<DevicePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Pulse Oximeter • $name'),
+        title: Text(name),
         actions: [
           IconButton(
-            tooltip: 'ค้นหา/สมัครรับค่าใหม่',
             icon: const Icon(Icons.refresh),
+            onPressed: _setupByService,
+            tooltip: 'ลองค้นหา Service ใหม่',
+          ),
+          IconButton(
+            icon: const Icon(Icons.link_off),
             onPressed: () async {
-              setState(() {
-                _busy = true;
-                _error = null;
-                _spo2 = null;
-                _pulse = null;
-                _ts = null;
-                _lastRawByChar.clear();
-              });
-              await _discoverAndBind();
+              try { await widget.device.disconnect(); } catch (_) {}
+              if (!mounted) return;
+              Navigator.pop(context);
             },
+            tooltip: 'ตัดการเชื่อมต่อ',
           ),
         ],
       ),
-      body: _busy
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_error != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(_error!, style: const TextStyle(color: Colors.red)),
-                    ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (_error != null) ...[
+            Text(_error!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 8),
+          ],
+          if (_latestData.isEmpty)
+            const Text('ยังไม่มีข้อมูลจากอุปกรณ์'),
+          if (_latestData.isNotEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ดึงค่าแบบปลอดภัย รองรับคีย์หลายแบบ
+                    Builder(builder: (_) {
+                      final spo2Val = _validSpo2(
+                        _latestData['spo2'] ??
+                        _latestData['SpO2'] ??
+                        _latestData['SPO2'],
+                      );
+                      final prVal = _validPr(
+                        _latestData['pr'] ??
+                        _latestData['PR'] ??
+                        _latestData['pulse'],
+                      );
 
-                  const Text('ค่าที่ตีความได้',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
+                      if (spo2Val != null || prVal != null) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'SpO₂: ${spo2Val?.toString() ?? '-'} %',
+                              style: const TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Pulse: ${prVal?.toString() ?? '-'} bpm',
+                              style: const TextStyle(fontSize: 20),
+                            ),
+                            const Divider(),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
 
-                  Row(
-                    children: [
-                      _metric('SpO₂', _spo2 != null ? '${_spo2!.toStringAsFixed(1)} %' : '-'),
-                      const SizedBox(width: 12),
-                      _metric('Pulse', _pulse != null ? '${_pulse!.toStringAsFixed(0)} bpm' : '-'),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text('อัปเดตล่าสุด: ${_ts != null ? _ts!.toLocal().toString().split(".").first : "-"}'),
-
-                  const Divider(height: 32),
-
-                  const Text('RAW ต่อ characteristic (ล่าสุด)',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-
-                  Expanded(
-                    child: _lastRawByChar.isEmpty
-                        ? const Text('ยังไม่มีข้อมูล (รออุปกรณ์ส่งค่า/ลองกด Refresh)')
-                        : ListView(
-                            children: _lastRawByChar.entries.map((e) {
-                              final uuid = e.key;
-                              final raw = e.value;
-                              return Card(
-                                child: ListTile(
-                                  title: Text('Char ${_shortUuid(uuid)} • ${uuid.str}'),
-                                  subtitle: Text(_hex(raw)),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                  ),
-                ],
+                    // แสดงรายการอื่น ยกเว้นคีย์ที่ใช้แล้ว
+                    ..._latestData.entries
+                        .where((e) => !{
+                              'spo2','SpO2','SPO2',
+                              'pr','PR','pulse',
+                            }.contains(e.key))
+                        .map((e) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text('${e.key}: ${e.value}',
+                                  style: const TextStyle(fontSize: 14)),
+                            )),
+                  ],
+                ),
               ),
             ),
-    );
-  }
 
-  Widget _metric(String title, String value) {
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(color: Colors.black54)),
-              const SizedBox(height: 6),
-              Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            ],
+          const SizedBox(height: 12),
+          const Text('บริการ/คุณลักษณะ (สำหรับดีบัก)'),
+          const SizedBox(height: 6),
+          Expanded(
+            child: _services.isEmpty
+                ? const Text('ยังไม่ได้ discover services')
+                : ListView(
+                    children: _services
+                        .map((s) => Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Service: ${s.uuid.str}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 4),
+                                      ...s.characteristics.map((c) => Text(
+                                            '  • Char: ${c.uuid.str}  '
+                                            '${c.properties.notify ? "[notify]" : ""}'
+                                            '${c.properties.indicate ? "[indicate]" : ""}',
+                                          )),
+                                    ]),
+                              ),
+                            ))
+                        .toList(),
+                  ),
           ),
-        ),
+        ]),
       ),
     );
   }
-}
-
-class _Reading {
-  final double spo2;
-  final double pulse;
-  _Reading({required this.spo2, required this.pulse});
 }
