@@ -24,6 +24,7 @@ import 'package:smarttelemed_v4/core/doctor/doctor_pending.dart';
 import 'package:smarttelemed_v4/core/appoint/make_appointment_screen.dart';
 import 'package:smarttelemed_v4/core/setting/setting_screen.dart';
 import 'package:smarttelemed_v4/core/doctor/doctor_result_screen.dart';
+import 'package:smarttelemed_v4/core/device/device_connect.dart';
 
 void main() {
   runApp(const MyApp());
@@ -65,6 +66,7 @@ class MyApp extends StatelessWidget {
         '/makeAppointment': (context) => const MakeAppointmentScreen(),
         '/settings': (context) => const SettingScreen(),
         '/doctorResult': (context) => const DoctorResultScreen(),
+        '/deviceConnect': (context) => const DeviceConnectPage(),
         // เพิ่ม routes อื่นๆ ตามต้องการ
       },
     );
