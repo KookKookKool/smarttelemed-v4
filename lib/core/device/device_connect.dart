@@ -7,9 +7,7 @@ import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// ไปยังหน้าดูค่าทีละอุปกรณ์
 import 'package:smarttelemed_v4/core/device/device_page.dart';
-// ไปยังหน้าดูค่าทุกอุปกรณ์พร้อมกัน (แดชบอร์ด)
 import 'package:smarttelemed_v4/core/device/device_screen.dart';
 
 class DeviceConnectPage extends StatefulWidget {
@@ -19,40 +17,45 @@ class DeviceConnectPage extends StatefulWidget {
 }
 
 class _DeviceConnectPageState extends State<DeviceConnectPage> {
-  final List<ScanResult> _scanResults = [];
+  // ---------------- Scan streams ----------------
   StreamSubscription<List<ScanResult>>? _scanSub;
   StreamSubscription<bool>? _isScanningSub;
-
   bool _isScanning = false;
 
-  // ---------- FILTERS ----------
+  // ---------------- Known devices (คงอยู่แม้หยุดสแกน) ----------------
+  final Map<String, BluetoothDevice> _devices = {};
+  final Map<String, String> _names = {};
+  final Map<String, DateTime> _lastSeen = {};
+  final Map<String, bool> _supportedMap = {};
+
+  // เก็บการ subscribe สถานะการเชื่อมต่อ
+  final Map<String, StreamSubscription<BluetoothConnectionState>> _connSubs = {};
+  final Set<String> _connectingIds = {};
+  final Set<String> _connectedIds  = {};
+
+  // ---------------- Filters ----------------
   Set<String> _installedIds = {};
   bool _installedOnly = true;
   bool _supportedOnly = true;
 
-  // tails ของ service ที่รองรับ (ปลาย UUID 4 ตัว)
   static const Set<String> _supportedServiceTails = {
     'cb80', // Jumper service
-    '1822', // PLX Oximeter
+    '1822', // PLX (oximeter)
     '1810', // Blood Pressure
     '1809', // Thermometer
     '1808', // Glucose
-    'ffe0', // Yuwell-like oximeter
     '181b', // Body Composition (MIBFS)
+    'ffe0', // Yuwell-like oximeter
   };
 
-  // คีย์เวิร์ดชื่ออุปกรณ์
   static const List<String> _nameKeywords = [
-    'oximeter', 'my oximeter', 'jumper', 'jpd',
-    'yuwell', 'ua-651', 'ua651', 'ye680a',
-    'glucose',
-    'mibfs',
+    'oximeter','my oximeter','jumper','jpd',
+    'yuwell','ua-651','ua651','ye680a',
+    'glucose','mibfs','scale'
   ];
 
-  // ---------- Multi-connect ----------
-  final Map<String, StreamSubscription<BluetoothConnectionState>> _connSubs = {};
-  final Set<String> _connectingIds = {};
-  final Set<String> _connectedIds  = {};
+  // เก็บแค่ 2 นาทีถ้าไม่ได้เชื่อมต่อ (ลิสต์จะไม่ว่างเปล่าทันที)
+  static const Duration _retainDuration = Duration(minutes: 2);
 
   @override
   void initState() {
@@ -69,6 +72,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     super.dispose();
   }
 
+  // ------------ Permissions ------------
   Future<void> _requestPerms() async {
     if (Platform.isAndroid) {
       await Permission.bluetoothScan.request();
@@ -77,6 +81,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     }
   }
 
+  // ------------ Installed list ------------
   Future<void> _loadInstalledIds() async {
     final prefs = await SharedPreferences.getInstance();
     _installedIds = (prefs.getStringList('installed_device_ids') ?? []).toSet();
@@ -98,20 +103,28 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     if (mounted) setState(() {});
   }
 
-  // ---------- Scan ----------
+  // ------------ Scan ------------
   void _startScan() async {
     if (_isScanning) return;
 
-    _scanResults.clear();
     await _scanSub?.cancel();
     await _isScanningSub?.cancel();
 
     _scanSub = FlutterBluePlus.scanResults.listen((results) {
-      _scanResults
-        ..clear()
-        ..addAll(results);
+      final now = DateTime.now();
+      for (final r in results) {
+        final id = r.device.remoteId.str;
+        _devices[id] = r.device;
+        _names[id] = r.device.platformName.isNotEmpty
+            ? r.device.platformName
+            : (r.advertisementData.advName.isNotEmpty
+                ? r.advertisementData.advName
+                : 'Unknown');
+        _lastSeen[id] = now;
+        _supportedMap[id] = _matchSupported(r);
+        _watchDevice(r.device);
+      }
       if (mounted) setState(() {});
-      for (final r in results) { _watchDevice(r.device); }
     });
 
     _isScanningSub = FlutterBluePlus.isScanning.listen((s) {
@@ -132,7 +145,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     try { await FlutterBluePlus.stopScan(); } catch (_) {}
   }
 
-  // ---------- Multi-connect helpers ----------
+  // ------------ Connection watchers ------------
   void _watchDevice(BluetoothDevice d) {
     final id = d.remoteId.str;
     if (_connSubs.containsKey(id)) return;
@@ -154,6 +167,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     final id = d.remoteId.str;
     _watchDevice(d);
 
+    // เพื่อเลี่ยงชน GATT บนอุปกรณ์บางรุ่น เราหยุดสแกน แต่ "ลิสต์จะไม่หาย"
     final wasScanning = _isScanning;
     await _stopScan();
 
@@ -163,13 +177,12 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
       _installedIds.add(id);
       await _saveInstalledIds();
 
-      // ชวนไปหน้า Dashboard หลังเชื่อมต่อสำเร็จ
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('เชื่อมต่อกับ ${d.platformName.isNotEmpty ? d.platformName : id} สำเร็จ'),
+          content: Text('เชื่อมต่อกับ ${_names[id] ?? id} สำเร็จ'),
           action: SnackBarAction(
-            label: 'เปิดหน้าแสดงผล',
+            label: 'เปิดแดชบอร์ด',
             onPressed: () {
               Navigator.push(
                 context,
@@ -202,9 +215,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     }
   }
 
-  // ---------- Filters (เวอร์ชันเดียวเท่านั้น – ไม่มีซ้ำ) ----------
-
-  // ช่วยเช็คปลาย UUID 4 ตัวอักษรในชุด Guid ใดๆ
+  // ------------ Filters ------------
   bool _guidsHaveTail(Iterable<Guid> guids, String tail4) {
     final t = tail4.toLowerCase();
     for (final g in guids) {
@@ -215,70 +226,94 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     return false;
   }
 
-  // มี 0xXXXX ใน serviceUuids ของโฆษณาไหม
-  bool _advHasSvcTail(ScanResult r, String tail4) {
-    return _guidsHaveTail(r.advertisementData.serviceUuids, tail4);
-  }
+  bool _advHasSvcTail(ScanResult r, String tail4) =>
+      _guidsHaveTail(r.advertisementData.serviceUuids, tail4);
 
-  // มี 0xXXXX ใน serviceData.keys ของโฆษณาไหม (เช่น FE95)
-  bool _advHasSvcDataTail(ScanResult r, String tail4) {
-    return _guidsHaveTail(r.advertisementData.serviceData.keys, tail4);
-  }
+  bool _advHasSvcDataTail(ScanResult r, String tail4) =>
+      _guidsHaveTail(r.advertisementData.serviceData.keys, tail4);
 
   bool _matchSupported(ScanResult r) {
-    // 1) ชื่ออุปกรณ์
+    // ชื่ออุปกรณ์
     final name = (r.device.platformName.isNotEmpty
             ? r.device.platformName
             : r.advertisementData.advName)
         .toLowerCase();
-
     if (name.isNotEmpty) {
       for (final k in _nameKeywords) {
         if (name.contains(k)) return true;
       }
     }
 
-    // 2) Service UUIDs ที่โฆษณามา
+    // Service UUIDs
     for (final g in r.advertisementData.serviceUuids) {
       final s = g.str.toLowerCase();
       final tail = s.length >= 4 ? s.substring(s.length - 4) : s;
       if (_supportedServiceTails.contains(tail)) return true;
     }
 
-    // 3) เคสพิเศษ: Xiaomi MIBFS
-    //    - ผู้ผลิต 0x0157 (Xiaomi)
-    //    - หรือมี FE95 ใน serviceData (Mi Beacon)
-    //    - หรือประกาศ 0x181B (Body Composition) ใน serviceUuids/serviceData
-    //    - หรือชื่อส่อว่าเป็นเครื่องชั่ง
-    final mkeys = r.advertisementData.manufacturerData.keys;
-    final isXiaomi = mkeys.contains(0x0157);
-
-    final looksLikeScale = name.contains('mibfs');
-                         
-
+    // เคสพิเศษ: Xiaomi/Mi Scale (MIBFS)
+    final isXiaomi = r.advertisementData.manufacturerData.keys.contains(0x0157);
+    final looksLikeScale = name.contains('mibfs') || name.contains('scale');
     final hasBodyComp = _advHasSvcTail(r, '181b') || _advHasSvcDataTail(r, '181b');
     final hasMiBeacon = _advHasSvcDataTail(r, 'fe95');
 
-    if (isXiaomi && (hasBodyComp || hasMiBeacon || looksLikeScale)) {
-      return true;
-    }
+    if (isXiaomi && (hasBodyComp || hasMiBeacon || looksLikeScale)) return true;
 
     return false;
   }
 
-  List<ScanResult> get _filteredResults {
-    return _scanResults.where((r) {
-      final id = r.device.remoteId.str;
-      if (_installedOnly) return _installedIds.contains(id);
-      if (_supportedOnly) return _matchSupported(r);
-      return true;
-    }).toList();
+  List<String> get _visibleIds {
+    final now = DateTime.now();
+    final all = <String>{
+      ..._devices.keys,
+      ..._installedIds,
+      ..._connectedIds,
+    };
+
+    bool keep(String id) {
+      // เก็บถ้าเชื่อมต่ออยู่เสมอ
+      if (_connectedIds.contains(id)) return true;
+
+      // ถ้าเคยเห็นไม่เกิน retainDuration
+      final seen = _lastSeen[id];
+      if (seen != null && now.difference(seen) <= _retainDuration) {
+        // ผ่านเงื่อนไขการกรอง
+        if (_installedOnly && !_installedIds.contains(id)) return false;
+        if (_supportedOnly) {
+          final supported = _supportedMap[id] ?? false;
+          if (!supported && !_installedIds.contains(id)) return false;
+        }
+        return true;
+      }
+
+      // ถ้าเป็น “อุปกรณ์ของฉัน” ก็แสดง (แม้ยังไม่เห็นล่าสุด)
+      if (_installedOnly && _installedIds.contains(id)) return true;
+
+      return false;
+    }
+
+    final list = all.where(keep).toList();
+
+    // จัดเรียง: Connected ก่อน, แล้วตามล่าสุด -> ชื่อ
+    list.sort((a, b) {
+      final ca = _connectedIds.contains(a) ? 0 : 1;
+      final cb = _connectedIds.contains(b) ? 0 : 1;
+      if (ca != cb) return ca - cb;
+
+      final ta = _lastSeen[a]?.millisecondsSinceEpoch ?? 0;
+      final tb = _lastSeen[b]?.millisecondsSinceEpoch ?? 0;
+      if (ta != tb) return tb.compareTo(ta);
+
+      return (_names[a] ?? a).compareTo(_names[b] ?? b);
+    });
+
+    return list;
   }
 
-  // ---------- UI ----------
+  // ------------ UI ------------
   @override
   Widget build(BuildContext context) {
-    final results = _filteredResults;
+    final ids = _visibleIds;
 
     return Scaffold(
       appBar: AppBar(
@@ -317,29 +352,23 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
           ),
           SwitchListTile(
             title: const Text('แสดงเฉพาะรุ่นที่ระบบรองรับ'),
-            subtitle: const Text('กรองจากชื่อและ Service UUID ในโฆษณา BLE'),
+            subtitle: const Text('คัดกรองจากชื่อ/Service UUID ในโฆษณา BLE'),
             value: _supportedOnly,
             onChanged: (v) => setState(() => _supportedOnly = v),
           ),
           const Divider(height: 1),
 
           Expanded(
-            // ใช้ Card + Column + Wrap ปุ่ม เพื่อ “ไม่ล้นจอ” ทุกขนาดหน้าจอ
-            child: results.isEmpty
+            child: ids.isEmpty
                 ? const Center(child: Text('ไม่พบอุปกรณ์ตามเงื่อนไขที่เลือก'))
                 : ListView.separated(
                     padding: const EdgeInsets.all(12),
-                    itemCount: results.length,
+                    itemCount: ids.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
-                      final r = results[i];
-                      final dev = r.device;
-                      final id  = dev.remoteId.str;
-                      final name = dev.platformName.isNotEmpty
-                          ? dev.platformName
-                          : (r.advertisementData.advName.isNotEmpty
-                              ? r.advertisementData.advName
-                              : 'Unknown');
+                      final id   = ids[i];
+                      final dev  = _devices[id];
+                      final name = _names[id] ?? 'Offline';
                       final installed  = _installedIds.contains(id);
                       final connecting = _connectingIds.contains(id);
                       final connected  = _connectedIds.contains(id);
@@ -350,7 +379,6 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // แถวหัวการ์ด
                               Row(
                                 children: [
                                   const Icon(Icons.bluetooth),
@@ -360,7 +388,8 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                                       name,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(
+                                        fontSize: 16, fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                   if (connected)
@@ -372,15 +401,16 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                               ),
                               const SizedBox(height: 4),
                               Text(id, style: const TextStyle(color: Colors.black54, fontSize: 12)),
-
                               const SizedBox(height: 10),
-                              // ปุ่มแบบ Wrap (ขึ้นบรรทัดใหม่อัตโนมัติหากจอแคบ)
+
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: [
                                   IconButton(
-                                    tooltip: installed ? 'ลบจากอุปกรณ์ของฉัน' : 'บันทึกเป็นอุปกรณ์ของฉัน',
+                                    tooltip: installed
+                                        ? 'ลบจากอุปกรณ์ของฉัน'
+                                        : 'บันทึกเป็นอุปกรณ์ของฉัน',
                                     icon: Icon(installed
                                         ? Icons.bookmark_added
                                         : Icons.bookmark_add_outlined),
@@ -388,14 +418,20 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                                   ),
                                   if (!connected)
                                     ElevatedButton(
-                                      onPressed: connecting ? null : () => _connectTo(dev),
+                                      onPressed: (connecting || dev == null)
+                                          ? null
+                                          : () => _connectTo(dev),
                                       child: connecting
-                                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            )
                                           : const Text('เชื่อมต่อ'),
                                     )
                                   else ...[
                                     OutlinedButton(
-                                      onPressed: () {
+                                      onPressed: dev == null ? null : () {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(builder: (_) => DevicePage(device: dev)),
@@ -404,7 +440,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                                       child: const Text('เปิด (หน้าอุปกรณ์)'),
                                     ),
                                     ElevatedButton(
-                                      onPressed: () => _disconnectFrom(dev),
+                                      onPressed: dev == null ? null : () => _disconnectFrom(dev),
                                       child: const Text('ตัดการเชื่อมต่อ'),
                                     ),
                                   ],

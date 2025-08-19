@@ -8,13 +8,13 @@ import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 
 // parsers
-import 'package:smarttelemed_v4/core/device/add_device/ua_651ble.dart';        // Stream<BpReading>
-import 'package:smarttelemed_v4/core/device/add_device/yuwell_bp_ye680a.dart'; // (ถ้ามีใช้)
-import 'package:smarttelemed_v4/core/device/add_device/yuwell_fpo_yx110.dart'; // Stream<Map<String,String>>
-import 'package:smarttelemed_v4/core/device/add_device/yuwell_yhw_6.dart';     // Stream<double> °C
-import 'package:smarttelemed_v4/core/device/add_device/yuwell_glucose.dart';   // Stream<Map<String,String>>
-import 'package:smarttelemed_v4/core/device/add_device/jumper_po_jpd_500f.dart'; // Jumper (ล็อกเฉพาะ chrCde81)
-import 'package:smarttelemed_v4/core/device/add_device/mibfs_05hm.dart';
+import 'package:smarttelemed_v4/core/device/add_device/A&D/ua_651ble.dart';        // Stream<BpReading>
+import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_bp_ye680a.dart'; // (ถ้ามีใช้)
+import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_fpo_yx110.dart'; // Stream<Map<String,String>>
+import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_yhw_6.dart';     // Stream<double> °C
+import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_glucose.dart';   // Stream<Map<String,String>>
+import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_po_jpd_500f.dart'; // Jumper (ล็อกเฉพาะ chrCde81)
+import 'package:smarttelemed_v4/core/device/add_device/Mi/mibfs_05hm.dart';
 
 class DevicePage extends StatefulWidget {
   final BluetoothDevice device;
@@ -83,6 +83,14 @@ class _DevicePageState extends State<DevicePage> {
           throw 'เชื่อมต่อไม่สำเร็จ (อุปกรณ์ปฏิเสธการเชื่อมต่อ)';
         }
       }
+      if (_services.any((s) => s.uuid.str.toLowerCase().endsWith('181b')) ||
+          _services.any((s) => s.characteristics.any((c) =>
+            c.uuid.str.toLowerCase().contains('00001530') ||
+            c.uuid.str.toLowerCase().contains('00001531')))) {
+        final s = await MiBfs05hm(device: widget.device).parse();
+        _listenMapStream(s);
+        return;
+      }
 
       // Discover services (retry เผื่อครั้งแรกว่าง)
       _services = [];
@@ -142,7 +150,7 @@ class _DevicePageState extends State<DevicePage> {
       // (7) MIBFS 05HM (Body Composition)
       if (_hasSvc(svcBody) && _hasChr(svcBody, chrBodyMx)) {
         final s = await MiBfs05hm(device: widget.device).parse();
-        _listenMapStream(s);        // จะแสดง weight_kg, body_fat_percent, impedance_ohm ฯลฯ
+        _listenMapStream(s);    // จะแสดง weight_kg, body_fat_percent, impedance_ohm ฯลฯ
         return;
       }
 

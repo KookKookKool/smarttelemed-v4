@@ -9,12 +9,12 @@ import 'package:smarttelemed_v4/core/device/device_connect.dart';
 import 'package:smarttelemed_v4/core/device/device_page.dart';
 
 // parsers
-import 'package:smarttelemed_v4/core/device/add_device/ua_651ble.dart';        // AdUa651Ble + BpReading
-import 'package:smarttelemed_v4/core/device/add_device/yuwell_yhw_6.dart';     // YuwellYhw6 (Stream<double>)
-import 'package:smarttelemed_v4/core/device/add_device/yuwell_glucose.dart';   // YuwellGlucose (Stream<Map>)
-import 'package:smarttelemed_v4/core/device/add_device/yuwell_fpo_yx110.dart'; // YuwellFpoYx110 (Stream<Map>)
-import 'package:smarttelemed_v4/core/device/add_device/jumper_po_jpd_500f.dart'; // JumperPoJpd500f (Stream<Map>)
-import 'package:smarttelemed_v4/core/device/add_device/mibfs_05hm.dart'; // Mibfs05Hm (Stream<Map>)
+import 'package:smarttelemed_v4/core/device/add_device/A&D/ua_651ble.dart';        // AdUa651Ble + BpReading
+import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_yhw_6.dart';     // YuwellYhw6 (Stream<double>)
+import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_glucose.dart';   // YuwellGlucose (Stream<Map>)
+import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_fpo_yx110.dart'; // YuwellFpoYx110 (Stream<Map>)
+import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_po_jpd_500f.dart'; // JumperPoJpd500f (Stream<Map>)
+import 'package:smarttelemed_v4/core/device/add_device/Mi/mibfs_05hm.dart'; // Mibfs05Hm (Stream<Map>)
 
 class DeviceScreen extends StatefulWidget {
   const DeviceScreen({super.key});
