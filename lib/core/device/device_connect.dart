@@ -6,8 +6,6 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
-
 // ไปยังหน้าดูค่าทีละอุปกรณ์
 import 'package:smarttelemed_v4/core/device/device_page.dart';
 // ไปยังหน้าดูค่าทุกอุปกรณ์พร้อมกัน (แดชบอร์ด)
@@ -31,11 +29,24 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
   bool _installedOnly = true;
   bool _supportedOnly = true;
 
+  // tails ของ service ที่รองรับ (ปลาย UUID 4 ตัว)
   static const Set<String> _supportedServiceTails = {
-    'cb80', '1822', '1810', '1809', '1808', 'ffe0',
+    'cb80', // Jumper service
+    '1822', // PLX Oximeter
+    '1810', // Blood Pressure
+    '1809', // Thermometer
+    '1808', // Glucose
+    'ffe0', // Yuwell-like oximeter
+    '181b', // Body Composition (MIBFS)
   };
+
+  // คีย์เวิร์ดชื่ออุปกรณ์
   static const List<String> _nameKeywords = [
-    'oximeter','my oximeter','jumper','jpd','yuwell','ua-651','ua651','ye680a','glucose',
+    'oximeter', 'my oximeter', 'jumper', 'jpd',
+    'yuwell', 'ua-651', 'ua651', 'ye680a',
+    'glucose',
+    // ชั่งน้ำหนัก/mi scale
+    'mibfs', '05hm', 'mi scale', 'scale', 'body composition', 'xiaomi',
   ];
 
   // ---------- Multi-connect ----------
@@ -191,22 +202,69 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     }
   }
 
-  // ---------- Filters ----------
+  // ---------- Filters (เวอร์ชันเดียวเท่านั้น – ไม่มีซ้ำ) ----------
+
+  // ช่วยเช็คปลาย UUID 4 ตัวอักษรในชุด Guid ใดๆ
+  bool _guidsHaveTail(Iterable<Guid> guids, String tail4) {
+    final t = tail4.toLowerCase();
+    for (final g in guids) {
+      final s = g.str.toLowerCase();
+      final tail = s.length >= 4 ? s.substring(s.length - 4) : s;
+      if (tail == t) return true;
+    }
+    return false;
+  }
+
+  // มี 0xXXXX ใน serviceUuids ของโฆษณาไหม
+  bool _advHasSvcTail(ScanResult r, String tail4) {
+    return _guidsHaveTail(r.advertisementData.serviceUuids, tail4);
+  }
+
+  // มี 0xXXXX ใน serviceData.keys ของโฆษณาไหม (เช่น FE95)
+  bool _advHasSvcDataTail(ScanResult r, String tail4) {
+    return _guidsHaveTail(r.advertisementData.serviceData.keys, tail4);
+  }
+
   bool _matchSupported(ScanResult r) {
+    // 1) ชื่ออุปกรณ์
     final name = (r.device.platformName.isNotEmpty
             ? r.device.platformName
             : r.advertisementData.advName)
         .toLowerCase();
+
     if (name.isNotEmpty) {
       for (final k in _nameKeywords) {
         if (name.contains(k)) return true;
       }
     }
+
+    // 2) Service UUIDs ที่โฆษณามา
     for (final g in r.advertisementData.serviceUuids) {
       final s = g.str.toLowerCase();
       final tail = s.length >= 4 ? s.substring(s.length - 4) : s;
       if (_supportedServiceTails.contains(tail)) return true;
     }
+
+    // 3) เคสพิเศษ: Xiaomi MIBFS
+    //    - ผู้ผลิต 0x0157 (Xiaomi)
+    //    - หรือมี FE95 ใน serviceData (Mi Beacon)
+    //    - หรือประกาศ 0x181B (Body Composition) ใน serviceUuids/serviceData
+    //    - หรือชื่อส่อว่าเป็นเครื่องชั่ง
+    final mkeys = r.advertisementData.manufacturerData.keys;
+    final isXiaomi = mkeys.contains(0x0157);
+
+    final looksLikeScale = name.contains('mibfs') ||
+                           name.contains('mi scale') ||
+                           name.contains('scale') ||
+                           name.contains('body composition');
+
+    final hasBodyComp = _advHasSvcTail(r, '181b') || _advHasSvcDataTail(r, '181b');
+    final hasMiBeacon = _advHasSvcDataTail(r, 'fe95');
+
+    if (isXiaomi && (hasBodyComp || hasMiBeacon || looksLikeScale)) {
+      return true;
+    }
+
     return false;
   }
 
@@ -300,7 +358,8 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                                   const Icon(Icons.bluetooth),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: Text(name,
+                                    child: Text(
+                                      name,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
