@@ -1,9 +1,8 @@
 // lib/core/device/device_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-
-
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 // หน้าจออื่น
 import 'package:smarttelemed_v4/core/device/device_connect.dart';
@@ -45,8 +44,8 @@ class _DeviceScreenState extends State<DeviceScreen> {
   static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
   static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
   // Body Composition (สำหรับ MIBFS)
-  static final Guid svcBody    = Guid('0000181b-0000-1000-8000-00805f9b34fb'); 
-  static final Guid chr2A9C    = Guid('00002a9c-0000-1000-8000-00805f9b34fb'); 
+  static final Guid svcBody   = Guid('0000181b-0000-1000-8000-00805f9b34fb');
+  static final Guid chrBodyMx = Guid('00002a9c-0000-1000-8000-00805f9b34fb');
   // Jumper (ล็อกใช้เฉพาะ characteristic)
   static final Guid chrCde81   = Guid('cdeacb81-5235-4c07-8846-93a37ee6b86d');
 
@@ -159,7 +158,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
       final s = await YuwellFpoYx110(device: device).parse(); // Stream<Map>
       return _ParserBinding.map(s);
     }
-    if (hasSvc(svcBody) && hasChr(svcBody, chr2A9C)) {
+    if (hasSvc(svcBody) && hasChr(svcBody, chrBodyMx)) {
     final s = await MiBfs05hm(device: device).parse();
      return _ParserBinding.map(s);
   }

@@ -2,7 +2,8 @@
 import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,8 +46,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     'oximeter', 'my oximeter', 'jumper', 'jpd',
     'yuwell', 'ua-651', 'ua651', 'ye680a',
     'glucose',
-    // ชั่งน้ำหนัก/mi scale
-    'mibfs', '05hm', 'mi scale', 'scale', 'body composition', 'xiaomi',
+    'mibfs',
   ];
 
   // ---------- Multi-connect ----------
@@ -253,10 +253,8 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     final mkeys = r.advertisementData.manufacturerData.keys;
     final isXiaomi = mkeys.contains(0x0157);
 
-    final looksLikeScale = name.contains('mibfs') ||
-                           name.contains('mi scale') ||
-                           name.contains('scale') ||
-                           name.contains('body composition');
+    final looksLikeScale = name.contains('mibfs');
+                         
 
     final hasBodyComp = _advHasSvcTail(r, '181b') || _advHasSvcDataTail(r, '181b');
     final hasMiBeacon = _advHasSvcDataTail(r, 'fe95');
