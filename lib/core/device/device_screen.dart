@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
+
+
 // หน้าจออื่น
 import 'package:smarttelemed_v4/core/device/device_connect.dart';
 import 'package:smarttelemed_v4/core/device/device_page.dart';
@@ -13,6 +15,7 @@ import 'package:smarttelemed_v4/core/device/add_device/yuwell_yhw_6.dart';     /
 import 'package:smarttelemed_v4/core/device/add_device/yuwell_glucose.dart';   // YuwellGlucose (Stream<Map>)
 import 'package:smarttelemed_v4/core/device/add_device/yuwell_fpo_yx110.dart'; // YuwellFpoYx110 (Stream<Map>)
 import 'package:smarttelemed_v4/core/device/add_device/jumper_po_jpd_500f.dart'; // JumperPoJpd500f (Stream<Map>)
+import 'package:smarttelemed_v4/core/device/add_device/mibfs_05hm.dart'; // Mibfs05Hm (Stream<Map>)
 
 class DeviceScreen extends StatefulWidget {
   const DeviceScreen({super.key});
@@ -41,6 +44,9 @@ class _DeviceScreenState extends State<DeviceScreen> {
   // Yuwell-like Oximeter
   static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
   static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
+  // Body Composition (สำหรับ MIBFS)
+  static final Guid svcBody    = Guid('0000181b-0000-1000-8000-00805f9b34fb'); 
+  static final Guid chr2A9C    = Guid('00002a9c-0000-1000-8000-00805f9b34fb'); 
   // Jumper (ล็อกใช้เฉพาะ characteristic)
   static final Guid chrCde81   = Guid('cdeacb81-5235-4c07-8846-93a37ee6b86d');
 
@@ -153,6 +159,10 @@ class _DeviceScreenState extends State<DeviceScreen> {
       final s = await YuwellFpoYx110(device: device).parse(); // Stream<Map>
       return _ParserBinding.map(s);
     }
+    if (hasSvc(svcBody) && hasChr(svcBody, chr2A9C)) {
+    final s = await MiBfs05hm(device: device).parse();
+     return _ParserBinding.map(s);
+  }
 
     // ไม่รองรับ → คืน empty
     throw Exception('ยังไม่รองรับอุปกรณ์นี้ (ไม่พบ Service/Characteristic ที่รู้จัก)');
