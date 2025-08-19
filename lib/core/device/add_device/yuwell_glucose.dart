@@ -2,6 +2,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
+
 
 /// อ่านค่า Glucose จาก Glucose Service (0x1808) / Glucose Measurement (0x2A18)
 /// ส่งออก Stream<Map<String,String>> เช่น:

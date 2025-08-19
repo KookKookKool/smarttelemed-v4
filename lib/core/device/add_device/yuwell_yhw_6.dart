@@ -2,6 +2,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
+
 
 /// Health Thermometer Service (0x1809)
 /// Temperature Measurement (0x2A1C)
