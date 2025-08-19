@@ -1,7 +1,9 @@
 // lib/core/device/device_page.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
+
 
 
 
@@ -12,6 +14,7 @@ import 'package:smarttelemed_v4/core/device/add_device/yuwell_fpo_yx110.dart'; /
 import 'package:smarttelemed_v4/core/device/add_device/yuwell_yhw_6.dart';     // Stream<double> °C
 import 'package:smarttelemed_v4/core/device/add_device/yuwell_glucose.dart';   // Stream<Map<String,String>>
 import 'package:smarttelemed_v4/core/device/add_device/jumper_po_jpd_500f.dart'; // Jumper (ล็อกเฉพาะ chrCde81)
+import 'package:smarttelemed_v4/core/device/add_device/mibfs_05hm.dart';
 
 class DevicePage extends StatefulWidget {
   final BluetoothDevice device;
@@ -46,7 +49,9 @@ class _DevicePageState extends State<DevicePage> {
   // Yuwell-like
   static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
   static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
-
+  // Body Composition (สำหรับ MIBFS)
+  static final Guid svcBody   = Guid('0000181b-0000-1000-8000-00805f9b34fb');
+  static final Guid chrBodyMx = Guid('00002a9c-0000-1000-8000-00805f9b34fb');
   @override
   void initState() {
     super.initState();
@@ -132,6 +137,12 @@ class _DevicePageState extends State<DevicePage> {
       if (_hasSvc(svcGlucose) && _hasChr(svcGlucose, chrGluMeas)) {
         final s = await YuwellGlucose(device: widget.device).parse();
         _listenMapStream(s);
+        return;
+      }
+      // (7) MIBFS 05HM (Body Composition)
+      if (_hasSvc(svcBody) && _hasChr(svcBody, chrBodyMx)) {
+        final s = await MiBfs05hm(device: widget.device).parse();
+        _listenMapStream(s);        // จะแสดง weight_kg, body_fat_percent, impedance_ohm ฯลฯ
         return;
       }
 
