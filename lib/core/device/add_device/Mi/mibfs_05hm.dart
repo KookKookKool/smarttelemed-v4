@@ -1,69 +1,76 @@
-// lib/core/device/add_device/mibfs_05hm.dart
+// lib/core/device/add_device/Mi/mibfs_05hm.dart
 import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 /// Xiaomi Mi Body Composition Scale (MIBFS / XMTZC05HM)
-/// ✅ โฟกัสเฉพาะ "น้ำหนัก" เท่านั้น
-/// - ฟัง notify: 0x1530 / 0x1531 / 0x1542 / 0x1543 / 0x2A2F(เวนเดอร์)
-/// - เริ่มวัด: write 0x01 (และลอง 0x02) ไปที่ 0x1532
-/// - ถอดน้ำหนัก: ค้นหา UInt16LE / 200.0 ที่ได้ค่าอยู่ช่วง 10–300 kg
-///
-/// ส่งออก Stream<Map<String,String>>:
-/// { weight_kg: "72.35", src: "1530", raw: "..." }
+/// เปิดฟังทุกแชนเนล แล้ว "ยืนยันความเสถียร" ก่อนคอนเฟิร์มน้ำหนัก
 class MiBfs05hm {
   MiBfs05hm({required this.device});
   final BluetoothDevice device;
 
-  // Xiaomi private UUIDs (ตามหน้าจอที่แนบมา)
-  static final Guid _chr1530 = Guid('00001530-0000-3512-2118-0009af100700'); // notify, write
-  static final Guid _chr1531 = Guid('00001531-0000-3512-2118-0009af100700'); // notify, write
-  static final Guid _chr1532 = Guid('00001532-0000-3512-2118-0009af100700'); // write (kickoff)
-  static final Guid _chr1542 = Guid('00001542-0000-3512-2118-0009af100700'); // notify, read, write
-  static final Guid _chr1543 = Guid('00001543-0000-3512-2118-0009af100700'); // notify, read, write
-  static final Guid _chr2A2FVendor = Guid('00002a2f-0000-3512-2118-0009af100700'); // notify, write (เวนเดอร์)
+  // Xiaomi private UUIDs
+  static final Guid _chr1530 = Guid('00001530-0000-3512-2118-0009af100700');
+  static final Guid _chr1531 = Guid('00001531-0000-3512-2118-0009af100700');
+  static final Guid _chr1532 = Guid('00001532-0000-3512-2118-0009af100700'); // kickoff
+  static final Guid _chr1542 = Guid('00001542-0000-3512-2118-0009af100700');
+  static final Guid _chr1543 = Guid('00001543-0000-3512-2118-0009af100700');
+  static final Guid _chr2A2Fv= Guid('00002a2f-0000-3512-2118-0009af100700');
+
+  // BCS (บางล็อต)
+  static final Guid _svc181B = Guid('0000181b-0000-1000-8000-00805f9b34fb');
+  static final Guid _chr2A9C = Guid('00002a9c-0000-1000-8000-00805f9b34fb');
 
   final _controller = StreamController<Map<String, String>>.broadcast();
   final List<StreamSubscription<List<int>>> _subs = [];
 
-  // กันสแปม/เด้งรัว
-  double? _lastKg;
+  // สถานะภายใน
+  String? _lockedSrc;        // ล็อกเฉพาะแชนเนลที่ยืนยันผลแล้ว
+  double? _lastKg;           // ค่าสุดท้ายที่ส่งออกแล้ว
   DateTime _lastEmit = DateTime.fromMillisecondsSinceEpoch(0);
+
+  // ผู้สมัครก่อนยืนยัน
+  double? _candKg;
+  int _candStableCount = 0;
+  DateTime? _candSince;
+
+  // เกณฑ์เสถียร
+  static const int _stableNeeded = 3;                 // ≥ 3 เฟรม
+  static const Duration _stableWindow = Duration(milliseconds: 600); // รวม ≥ 600ms
+  static const double _stableDeltaKg = 0.2;           // ±0.2 kg
 
   // ---------- public ----------
   Future<Stream<Map<String, String>>> parse() async {
     await _ensureConnected();
     final services = await device.discoverServices();
 
-    // เปิด notify เฉพาะ characteristic ที่เกี่ยวกับน้ำหนัก (เอกชน Xiaomi)
-    final listenThese = <BluetoothCharacteristic>[];
+    // รวม candidates
+    final candidates = <BluetoothCharacteristic>[];
     for (final s in services) {
       for (final c in s.characteristics) {
-        if (c.uuid == _chr1530 ||
-            c.uuid == _chr1531 ||
-            c.uuid == _chr1542 ||
-            c.uuid == _chr1543 ||
-            c.uuid == _chr2A2FVendor) {
-          listenThese.add(c);
+        final u = c.uuid;
+        if (u == _chr1530 || u == _chr1531 || u == _chr1532 ||
+            u == _chr1542 || u == _chr1543 || u == _chr2A2Fv ||
+            (s.uuid == _svc181B && u == _chr2A9C)) {
+          candidates.add(c);
         }
       }
     }
+    if (candidates.isEmpty) {
+      throw Exception('ไม่พบ characteristic สำหรับตาชั่ง (1530/1531/1532/1542/1543/2A2F/2A9C)');
+    }
 
-    for (final c in listenThese) {
+    // เปิด notify/subscribe ทุกตัว
+    for (final c in candidates) {
       try { await c.setNotifyValue(true); } catch (_) {}
       _subs.add(c.lastValueStream.listen(
-        (data) => _onWeightFrame(data, srcUuid: c.uuid.str),
+        (data) => _onFrame(data, srcUuid: c.uuid.str),
         onError: (_) {},
       ));
       try { await c.read(); } catch (_) {}
     }
 
-    // เขียน kickoff เริ่มวัด (ถ้ามี 1532)
+    // kickoff: 1532 > 1530 > 1542 > 1543 > 1531 > 2A2F
     await _kickoff(services);
-
-    if (_subs.isEmpty) {
-      throw Exception('ไม่พบ characteristic ที่ใช้ชั่งน้ำหนัก (1530/1531/1542/1543/2A2F-vendor)');
-    }
-
     return _controller.stream;
   }
 
@@ -74,62 +81,145 @@ class MiBfs05hm {
 
   // ---------- internal ----------
   Future<void> _kickoff(List<BluetoothService> svcs) async {
-    try {
-      for (final s in svcs) {
-        for (final c in s.characteristics) {
-          if (c.uuid == _chr1532 && c.properties.write) {
-            await c.write(const [0x01], withoutResponse: false);
-            await Future.delayed(const Duration(milliseconds: 120));
-            // บางล็อตต้องตามด้วย 0x02
-            try { await c.write(const [0x02], withoutResponse: false); } catch (_) {}
-            return;
-          }
-        }
+    BluetoothCharacteristic? c1532, c1530, c1542, c1543, c1531, c2a2f;
+    for (final s in svcs) {
+      for (final c in s.characteristics) {
+        if (c.uuid == _chr1532) c1532 = c;
+        if (c.uuid == _chr1530) c1530 = c;
+        if (c.uuid == _chr1542) c1542 = c;
+        if (c.uuid == _chr1543) c1543 = c;
+        if (c.uuid == _chr1531) c1531 = c;
+        if (c.uuid == _chr2A2Fv) c2a2f = c;
       }
-    } catch (_) {}
+    }
+    final order = [c1532, c1530, c1542, c1543, c1531, c2a2f]
+        .where((c) => c != null && c!.properties.write)
+        .cast<BluetoothCharacteristic>()
+        .toList();
+
+    for (final t in order) {
+      try {
+        await t.write(const [0x01], withoutResponse: false);
+        await Future.delayed(const Duration(milliseconds: 120));
+        try { await t.write(const [0x02], withoutResponse: false); } catch (_) {}
+        break;
+      } catch (_) {}
+    }
   }
 
-  void _onWeightFrame(List<int> data, {required String srcUuid}) {
+  void _resetCandidate() {
+    _candKg = null;
+    _candStableCount = 0;
+    _candSince = null;
+  }
+
+  bool _isZeroishFrame(List<int> data) {
+    if (data.length >= 13) {
+      final lo = data[11] & 0xFF, hi = data[12] & 0xFF;
+      if (lo == 0 && hi == 0) return true;     // 0.00 (LE/BE) บ่อยมากในตอนปล่อยเท้า
+    }
+    return false;
+  }
+
+  void _onFrame(List<int> data, {required String srcUuid}) {
     if (data.isEmpty) return;
 
-    // 1) ตำแหน่งยอดนิยม: [11..12] / 200.0
-    double? kg;
-    if (data.length >= 13) {
-      final w = ((data[11] & 0xFF) | ((data[12] & 0xFF) << 8)) / 200.0;
-      if (_isValidKg(w)) kg = w;
-    }
+    final sShort = _shortSrc(srcUuid);
 
-    // 2) ถ้ายังไม่เจอ ลองสไลด์ทุก offset (UInt16LE / 200.0)
-    kg ??= _scanUInt16Div200(data);
+    // ถ้าล็อก src แล้วและไม่ตรง → เมิน
+    if (_lockedSrc != null && sShort != _lockedSrc) return;
 
-    if (kg == null) return;
-
-    // ลดเด้งซ้ำภายใน 150ms และต่างจากเดิมเล็กน้อย
-    final now = DateTime.now();
-    if (_lastKg != null &&
-        now.difference(_lastEmit).inMilliseconds < 150 &&
-        (kg - _lastKg!).abs() < 0.05) {
+    // ปลดล็อก/ล้างผู้สมัครเมื่อเจอเฟรมศูนย์ (ยกเท้าออก/รีเซ็ต)
+    if (_isZeroishFrame(data)) {
+      _lockedSrc = null;
+      _resetCandidate();
       return;
     }
-    _lastKg = kg;
-    _lastEmit = now;
 
-    _controller.add({
-      'weight_kg': kg.toStringAsFixed(2),
-      'src': _shortSrc(srcUuid),
-      'raw': _hex(data),
-    });
+    // ดึงค่าน้ำหนักจากเฟรม (ยังไม่คอนเฟิร์ม)
+    final kg = _extractWeightKg(data);
+    if (kg == null) return;
+
+    final now = DateTime.now();
+
+    // --- สะสมความเสถียรของ "ผู้สมัคร" ---
+    if (_candKg == null) {
+      _candKg = kg;
+      _candStableCount = 1;
+      _candSince = now;
+    } else {
+      // ถ้าห่างนานเกินไป ให้เริ่มนับใหม่
+      if (_candSince != null && now.difference(_candSince!).inMilliseconds > 1500) {
+        _resetCandidate();
+        _candKg = kg;
+        _candStableCount = 1;
+        _candSince = now;
+      } else {
+        if ((kg - _candKg!).abs() <= _stableDeltaKg) {
+          _candStableCount += 1;
+          // ขยับฐานเล็กน้อยเพื่อดูดซับ jitter
+          _candKg = (_candKg! * 0.6) + (kg * 0.4);
+        } else {
+          // กระโดดไกล → เริ่มนับผู้สมัครใหม่
+          _candKg = kg;
+          _candStableCount = 1;
+          _candSince = now;
+        }
+      }
+    }
+
+    // --- เงื่อนไข "ยืนยันผล" ก่อนส่งออก ---
+    final longEnough = _candSince != null && now.difference(_candSince!) >= _stableWindow;
+    if (_candStableCount >= _stableNeeded && longEnough) {
+      final finalKg = _candKg!;
+      // debounce ส่งซ้ำเร็วเกินไป
+      if (_lastKg != null &&
+          now.difference(_lastEmit).inMilliseconds < 150 &&
+          (finalKg - _lastKg!).abs() < 0.05) {
+        return;
+      }
+
+      _lockedSrc ??= sShort;   // ล็อกแชนเนลที่ยืนยันผลสำเร็จ
+      _lastKg = finalKg;
+      _lastEmit = now;
+
+      _controller.add({
+        'weight_kg': finalKg.toStringAsFixed(2),
+        'src': sShort,
+        'raw': _hex(data),
+      });
+    }
   }
 
-  bool _isValidKg(double v) => v >= 10.0 && v <= 300.0;
-
-  double? _scanUInt16Div200(List<int> data) {
+  /// คืนค่าน้ำหนักแบบ heuristic:
+  /// - ลอง offset 11..12 (LE/BE) ด้วย divisor 200 หรือ 100
+  /// - แล้วจึง slide ทุก offset หา UInt16 (LE/BE) ด้วย divisor 200/100
+  double? _extractWeightKg(List<int> data) {
+    // 1) offset 11..12 บ่อยสุด
+    if (data.length >= 13) {
+      final lo = data[11] & 0xFF;
+      final hi = data[12] & 0xFF;
+      final le = (lo | (hi << 8));
+      final be = ((lo << 8) | hi);
+      for (final d in const [200, 100]) {
+        final w1 = le / d; if (_isValidKg(w1)) return w1;
+        final w2 = be / d; if (_isValidKg(w2)) return w2;
+      }
+    }
+    // 2) สไลด์ทุก offset
     for (int i = 0; i + 1 < data.length; i++) {
-      final w = ((data[i] & 0xFF) | ((data[i + 1] & 0xFF) << 8)) / 200.0;
-      if (_isValidKg(w)) return w;
+      final lo = data[i] & 0xFF, hi = data[i + 1] & 0xFF;
+      final le = (lo | (hi << 8));
+      final be = ((lo << 8) | hi);
+      for (final d in const [200, 100]) {
+        final w1 = le / d; if (_isValidKg(w1)) return w1;
+        final w2 = be / d; if (_isValidKg(w2)) return w2;
+      }
     }
     return null;
   }
+
+  bool _isValidKg(double v) => v >= 10.0 && v <= 300.0;
 
   String _shortSrc(String u) {
     final s = u.toLowerCase();
@@ -139,6 +229,7 @@ class MiBfs05hm {
     if (s.contains('00001542')) return '1542';
     if (s.contains('00001543')) return '1543';
     if (s.contains('00002a2f')) return '2A2Fv';
+    if (s.contains('00002a9c')) return '2A9C';
     return u;
   }
 
@@ -152,18 +243,20 @@ class MiBfs05hm {
 
     if (st == BluetoothConnectionState.connecting) {
       st = await device.connectionState
-          .where((s) => s == BluetoothConnectionState.connected ||
-                        s == BluetoothConnectionState.disconnected)
+          .where((s) =>
+              s == BluetoothConnectionState.connected ||
+              s == BluetoothConnectionState.disconnected)
           .first
           .timeout(const Duration(seconds: 12),
-                   onTimeout: () => BluetoothConnectionState.disconnected);
+              onTimeout: () => BluetoothConnectionState.disconnected);
       if (st == BluetoothConnectionState.connected) return;
     }
 
     await device.connect(autoConnect: false, timeout: const Duration(seconds: 12));
     await device.connectionState
-        .where((s) => s == BluetoothConnectionState.connected ||
-                      s == BluetoothConnectionState.disconnected)
+        .where((s) =>
+            s == BluetoothConnectionState.connected ||
+            s == BluetoothConnectionState.disconnected)
         .first
         .timeout(const Duration(seconds: 12));
   }
