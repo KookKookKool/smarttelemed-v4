@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/app_colors.dart';
-import 'package:smarttelemed_v4/utils/responsive.dart';
 import 'login_qrcam.dart';
 
 class LoginTokenPage extends StatefulWidget {
@@ -15,7 +14,7 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
   String? _errorText;
 
   void _onConfirm() {
-    // final token = _tokenController.text.trim();
+    final token = _tokenController.text.trim();
     // if (token.isEmpty) {
     //   setState(() {
     //     _errorText = 'กรุณากรอก Token';
@@ -98,21 +97,8 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // โลโก้และชื่อ
-                Builder(
-                  builder: (ctx) {
-                    final r = ResponsiveSizer(ctx);
-                    return Column(
-                      children: [
-                        Image.asset(
-                          'assets/logo.png',
-                          width: r.sw(160),
-                          height: r.sh(90),
-                        ),
-                        SizedBox(height: r.sh(120)),
-                      ],
-                    );
-                  },
-                ),
+                Image.asset('assets/logo.png', width: 167, height: 95),
+                const SizedBox(height: 130),
                 // Label
                 Align(
                   alignment: Alignment.centerLeft,
@@ -151,45 +137,37 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
                 ),
                 const SizedBox(height: 20),
                 // ปุ่มยืนยัน
-                Builder(
-                  builder: (ctx) {
-                    final r = ResponsiveSizer(ctx);
-                    return SizedBox(
-                      width: r.sw(120),
-                      height: r.sh(44),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: AppColors.mainGradient,
+                SizedBox(
+                  width: 114,
+                  height: 41,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.mainGradient,
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.gradientStart.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _onConfirm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.gradientStart.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
                         ),
-                        child: ElevatedButton(
-                          onPressed: _onConfirm,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: Text(
-                            'ยืนยัน',
-                            style: TextStyle(
-                              fontSize: r.sf(14),
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
+                        elevation: 0,
                       ),
-                    );
-                  },
+                      child: const Text(
+                        'ยืนยัน',
+                        style: TextStyle(fontSize: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
