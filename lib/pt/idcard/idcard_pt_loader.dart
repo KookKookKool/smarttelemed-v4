@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/background.dart';
 import 'package:smarttelemed_v4/style/app_colors.dart';
+import 'package:smarttelemed_v4/widget/manubar.dart';
 import 'dart:async';
 
 class IdCardPtLoader extends StatefulWidget {
@@ -9,6 +10,7 @@ class IdCardPtLoader extends StatefulWidget {
   @override
   State<IdCardPtLoader> createState() => _IdCardPtLoaderState();
 }
+
 class _IdCardPtLoaderState extends State<IdCardPtLoader> {
   @override
   void initState() {
@@ -20,7 +22,8 @@ class _IdCardPtLoaderState extends State<IdCardPtLoader> {
       }
     });
   }
-   Widget build(BuildContext context) {
+
+  Widget build(BuildContext context) {
     return CircleBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -96,28 +99,28 @@ class _IdCardPtLoaderState extends State<IdCardPtLoader> {
                       // const SizedBox(height: 16),
                       // ข้อความ
                       const Text(
-                      'กำลังอ่านบัตรประชาชน',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.brown,
-                        fontWeight: FontWeight.w500,
+                        'กำลังอ่านบัตรประชาชน',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 20,
+                          color: Colors.brown,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-            // loading indicator
-            const SizedBox(
-              height: 50,
-              width: 50,
-              child: CircularProgressIndicator(
-                strokeWidth: 5,
-                color: Colors.green,
-              ),
-            ),
-            const SizedBox(height: 8),
+                      // loading indicator
+                      const SizedBox(
+                        height: 50,
+                        width: 50,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 5,
+                          color: Colors.green,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
 
-           // ช่องอ่านบัตร
+                      // ช่องอ่านบัตร
                       Container(
                         width: 200,
                         height: 15,
@@ -189,6 +192,7 @@ class _IdCardPtLoaderState extends State<IdCardPtLoader> {
                   ),
                 ),
               ),
+              Positioned(left: 0, right: 0, bottom: 0, child: Manubar()),
             ],
           ),
         ),
