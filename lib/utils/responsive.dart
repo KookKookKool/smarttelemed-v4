@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Lightweight responsive helpers used across the app.
 class ResponsiveSizer {
   final BuildContext context;
   final MediaQueryData mq;
