@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/background.dart';
+import 'package:smarttelemed_v4/utils/responsive.dart';
 
 class DeviceScreen extends StatelessWidget {
   const DeviceScreen({Key? key}) : super(key: key);
@@ -22,14 +23,19 @@ class DeviceScreen extends StatelessWidget {
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Center(
-                    child: Image.asset(
-                      'assets/logo.png',
-                      width: 167,
-                      height: 95,
-                    ),
+                  Builder(
+                    builder: (ctx) {
+                      final r = ResponsiveSizer(ctx);
+                      return Center(
+                        child: Image.asset(
+                          'assets/logo.png',
+                          width: r.sw(160),
+                          height: r.sh(80),
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: ResponsiveSizer(context).sh(16)),
                   const Text(
                     'สวัสดี !',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -59,7 +65,10 @@ class DeviceScreen extends StatelessWidget {
                     },
                     child: const Text('เชื่อมต่ออุปกรณ์'),
                     style: ElevatedButton.styleFrom(
-                      fixedSize: const Size(274, 44),
+                      fixedSize: Size(
+                        ResponsiveSizer(context).sw(300),
+                        ResponsiveSizer(context).sh(48),
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(50),
                       ),
@@ -72,7 +81,10 @@ class DeviceScreen extends StatelessWidget {
                     },
                     child: const Text('เข้าสู่ระบบใช้งาน'),
                     style: ElevatedButton.styleFrom(
-                      fixedSize: const Size(274, 44),
+                      fixedSize: Size(
+                        ResponsiveSizer(context).sw(300),
+                        ResponsiveSizer(context).sh(48),
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(50),
                       ),
