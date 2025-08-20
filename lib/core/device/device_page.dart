@@ -167,8 +167,12 @@ class _DevicePageState extends State<DevicePage> {
       }
 
       // (8) Glucose
-      if (_hasSvc(svcGlucose) && _hasChr(svcGlucose, chrGluMeas) && _hasChr(svcGlucose, chrGluRacp)) {
-        final s = await YuwellGlucose(device: widget.device).parse(fetchLastOnly: true, syncTime: true);
+     // (8) Glucose (ต้องมีทั้ง 0x2A18 และ 0x2A52)
+      if (_hasSvc(svcGlucose) &&
+          _hasChr(svcGlucose, chrGluMeas) &&
+          _hasChr(svcGlucose, chrGluRacp)) {
+        final s = await YuwellGlucose(device: widget.device)
+            .parse(fetchLastOnly: true, syncTime: true); // สำคัญ
         _listenMapStream(s);
         return;
       }

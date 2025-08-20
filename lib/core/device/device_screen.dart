@@ -37,7 +37,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
   // Glucose
   static final Guid svcGlucose = Guid('00001808-0000-1000-8000-00805f9b34fb');
   static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb');
-  static final Guid chrGluRacp = Guid('00002a52-0000-1000-8000-00805f9b34fb'); // RACP (Indicate+Write)
+  static final Guid chrGluRacp = Guid('00002a52-0000-1000-8000-00805f9b34fb'); // ← เพิ่มบรรทัดนี้
   // Yuwell-like oximeter
   static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
   static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
@@ -166,9 +166,11 @@ class _DeviceScreenState extends State<DeviceScreen> {
     }
 
     // --- Glucose ---
-    if (hasSvc(svcGlucose) && hasChr(svcGlucose, chrGluMeas) && hasChr(svcGlucose, chrGluRacp)) {
+    if (hasSvc(svcGlucose) &&
+        hasChr(svcGlucose, chrGluMeas) &&
+        hasChr(svcGlucose, chrGluRacp)) {
       final s = await YuwellGlucose(device: device)
-          .parse(fetchLastOnly: true, syncTime: true); // ← สำคัญ
+          .parse(fetchLastOnly: true, syncTime: true);
       return _ParserBinding.map(s);
     }
 
