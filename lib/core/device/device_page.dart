@@ -38,6 +38,7 @@ class _DevicePageState extends State<DevicePage> {
   // Glucose
   static final Guid svcGlucose = Guid('00001808-0000-1000-8000-00805f9b34fb');
   static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb');
+  static final Guid chrGluRacp = Guid('00002a52-0000-1000-8000-00805f9b34fb');
   // PLX (Oximeter standard)
   static final Guid svcPlx     = Guid('00001822-0000-1000-8000-00805f9b34fb');
   static final Guid chrPlxCont = Guid('00002a5f-0000-1000-8000-00805f9b34fb');
@@ -166,8 +167,8 @@ class _DevicePageState extends State<DevicePage> {
       }
 
       // (8) Glucose
-      if (_hasSvc(svcGlucose) && _hasChr(svcGlucose, chrGluMeas)) {
-        final s = await YuwellGlucose(device: widget.device).parse();
+      if (_hasSvc(svcGlucose) && _hasChr(svcGlucose, chrGluMeas) && _hasChr(svcGlucose, chrGluRacp)) {
+        final s = await YuwellGlucose(device: widget.device).parse(fetchLastOnly: true, syncTime: true);
         _listenMapStream(s);
         return;
       }

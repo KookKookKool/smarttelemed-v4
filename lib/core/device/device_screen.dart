@@ -37,19 +37,20 @@ class _DeviceScreenState extends State<DeviceScreen> {
   // Glucose
   static final Guid svcGlucose = Guid('00001808-0000-1000-8000-00805f9b34fb');
   static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb');
+  static final Guid chrGluRacp = Guid('00002a52-0000-1000-8000-00805f9b34fb'); // RACP (Indicate+Write)
   // Yuwell-like oximeter
   static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
   static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
   // Body Composition (มาตรฐาน) + Xiaomi proprietary
-static final Guid svcBody   = Guid('0000181b-0000-1000-8000-00805f9b34fb');
-static final Guid chrBodyMx = Guid('00002a9c-0000-1000-8000-00805f9b34fb');
+  static final Guid svcBody   = Guid('0000181b-0000-1000-8000-00805f9b34fb');
+  static final Guid chrBodyMx = Guid('00002a9c-0000-1000-8000-00805f9b34fb');
 
-static final Guid chr1530   = Guid('00001530-0000-3512-2118-0009af100700'); // weight(หลัก)
-static final Guid chr1531   = Guid('00001531-0000-3512-2118-0009af100700'); // alt
-static final Guid chr1532   = Guid('00001532-0000-3512-2118-0009af100700'); // kickoff
-static final Guid chr1542   = Guid('00001542-0000-3512-2118-0009af100700'); // alt
-static final Guid chr1543   = Guid('00001543-0000-3512-2118-0009af100700'); // alt
-static final Guid chr2A2Fv  = Guid('00002a2f-0000-3512-2118-0009af100700'); // vendor alt
+  static final Guid chr1530   = Guid('00001530-0000-3512-2118-0009af100700'); // weight(หลัก)
+  static final Guid chr1531   = Guid('00001531-0000-3512-2118-0009af100700'); // alt
+  static final Guid chr1532   = Guid('00001532-0000-3512-2118-0009af100700'); // kickoff
+  static final Guid chr1542   = Guid('00001542-0000-3512-2118-0009af100700'); // alt
+  static final Guid chr1543   = Guid('00001543-0000-3512-2118-0009af100700'); // alt
+  static final Guid chr2A2Fv  = Guid('00002a2f-0000-3512-2118-0009af100700'); // vendor alt
 
   // Jumper oximeter (ล็อกเฉพาะ chr)
   static final Guid chrCde81   = Guid('cdeacb81-5235-4c07-8846-93a37ee6b86d');
@@ -165,8 +166,9 @@ static final Guid chr2A2Fv  = Guid('00002a2f-0000-3512-2118-0009af100700'); // v
     }
 
     // --- Glucose ---
-    if (hasSvc(svcGlucose) && hasChr(svcGlucose, chrGluMeas)) {
-      final s = await YuwellGlucose(device: device).parse();
+    if (hasSvc(svcGlucose) && hasChr(svcGlucose, chrGluMeas) && hasChr(svcGlucose, chrGluRacp)) {
+      final s = await YuwellGlucose(device: device)
+          .parse(fetchLastOnly: true, syncTime: true); // ← สำคัญ
       return _ParserBinding.map(s);
     }
 
