@@ -1,7 +1,8 @@
 // lib/core/device/add_device/ua_651ble.dart
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 class BpReading {
   final double systolic;

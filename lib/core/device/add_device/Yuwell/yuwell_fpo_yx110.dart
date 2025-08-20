@@ -1,7 +1,9 @@
 // 📂 lib/core/device/yuwell_fpo_yx110.dart
 import 'dart:async';
 import 'dart:collection';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
+
 
 class YuwellFpoYx110 {
   YuwellFpoYx110({required this.device});

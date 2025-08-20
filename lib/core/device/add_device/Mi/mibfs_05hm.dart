@@ -1,6 +1,7 @@
 // lib/core/device/add_device/Mi/mibfs_05hm.dart
 import 'dart:async';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 /// Xiaomi Mi Body Composition Scale (MIBFS / XMTZC05HM)
 /// เปิดฟังทุกแชนเนล แล้ว "ยืนยันความเสถียร" ก่อนคอนเฟิร์มน้ำหนัก
