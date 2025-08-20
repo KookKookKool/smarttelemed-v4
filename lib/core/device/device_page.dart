@@ -13,6 +13,8 @@ import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_glucose.dar
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_po_jpd_500f.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_ha120.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Mi/mibfs_05hm.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_tem_ft95.dart';
+
 
 class DevicePage extends StatefulWidget {
   final BluetoothDevice device;
@@ -166,7 +168,6 @@ class _DevicePageState extends State<DevicePage> {
         return;
       }
 
-      // (8) Glucose
      // (8) Glucose (ต้องมีทั้ง 0x2A18 และ 0x2A52)
       if (_hasSvc(svcGlucose) &&
           _hasChr(svcGlucose, chrGluMeas) &&
@@ -174,6 +175,18 @@ class _DevicePageState extends State<DevicePage> {
         final s = await YuwellGlucose(device: widget.device)
             .parse(fetchLastOnly: true, syncTime: true); // สำคัญ
         _listenMapStream(s);
+        return;
+      }
+
+      // (9) Beurer FT95 Thermometer
+      if (lowerName.contains('ft95') && _hasSvc(svcThermo) && _hasChr(svcThermo, chrTemp)) {
+        final beurer = BeurerFt95(device: widget.device);
+        await beurer.connect(); // subscribe 0x2A1C ภายในคลาส
+        _sub?.cancel();
+        _sub = beurer.onTemperature.listen(
+          (tempC) => _onData({'temp': tempC.toStringAsFixed(2)}),
+          onError: _onErr,
+        );
         return;
       }
 

@@ -16,6 +16,8 @@ import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_fpo_yx110.d
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_po_jpd_500f.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_ha120.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Mi/mibfs_05hm.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_tem_ft95.dart';
+
 
 class DeviceScreen extends StatefulWidget {
   const DeviceScreen({super.key});
@@ -189,6 +191,14 @@ class _DeviceScreenState extends State<DeviceScreen> {
       final s = await MiBfs05hm(device: device).parse(); // ใช้ 1530 เป็นหลัก + fallback อื่น ๆ
       return _ParserBinding.map(s);
     }
+
+    // --- Beurer FT95 (Thermometer 0x1809 / 0x2A1C) ---
+    if (name.contains('ft95') && hasSvc(svcThermo) && hasChr(svcThermo, chrTemp)) {
+      final beurer = BeurerFt95(device: device);
+      await beurer.connect();                 // subscribe 0x2A1C ภายในคลาส
+      return _ParserBinding.temp(beurer.onTemperature);
+    }
+
     throw Exception('ยังไม่รองรับอุปกรณ์นี้ (ไม่พบ Service/Characteristic ที่รู้จัก)');
   }
 
