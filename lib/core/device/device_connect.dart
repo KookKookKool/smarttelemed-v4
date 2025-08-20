@@ -29,10 +29,9 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
   final Map<String, bool> _supportedMap = {};
 
   // เก็บการ subscribe สถานะการเชื่อมต่อ
-  final Map<String, StreamSubscription<BluetoothConnectionState>> _connSubs =
-      {};
+  final Map<String, StreamSubscription<BluetoothConnectionState>> _connSubs = {};
   final Set<String> _connectingIds = {};
-  final Set<String> _connectedIds = {};
+  final Set<String> _connectedIds  = {};
 
   // ---------------- Filters ----------------
   Set<String> _installedIds = {};
@@ -50,17 +49,9 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
   };
 
   static const List<String> _nameKeywords = [
-    'oximeter',
-    'my oximeter',
-    'jumper',
-    'jpd',
-    'yuwell',
-    'ua-651',
-    'ua651',
-    'ye680a',
-    'glucose',
-    'mibfs',
-    'scale',
+    'oximeter','my oximeter','jumper','jpd',
+    'yuwell','ua-651','ua651','ye680a',
+    'glucose','mibfs','scale'
   ];
 
   // เก็บแค่ 2 นาทีถ้าไม่ได้เชื่อมต่อ (ลิสต์จะไม่ว่างเปล่าทันที)
@@ -77,9 +68,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
   void dispose() {
     _scanSub?.cancel();
     _isScanningSub?.cancel();
-    for (final s in _connSubs.values) {
-      s.cancel();
-    }
+    for (final s in _connSubs.values) { s.cancel(); }
     super.dispose();
   }
 
@@ -129,8 +118,8 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
         _names[id] = r.device.platformName.isNotEmpty
             ? r.device.platformName
             : (r.advertisementData.advName.isNotEmpty
-                  ? r.advertisementData.advName
-                  : 'Unknown');
+                ? r.advertisementData.advName
+                : 'Unknown');
         _lastSeen[id] = now;
         _supportedMap[id] = _matchSupported(r);
         _watchDevice(r.device);
@@ -146,16 +135,14 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
       await FlutterBluePlus.startScan(timeout: const Duration(seconds: 6));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('เริ่มสแกนไม่สำเร็จ: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('เริ่มสแกนไม่สำเร็จ: $e')),
+      );
     }
   }
 
   Future<void> _stopScan() async {
-    try {
-      await FlutterBluePlus.stopScan();
-    } catch (_) {}
+    try { await FlutterBluePlus.stopScan(); } catch (_) {}
   }
 
   // ------------ Connection watchers ------------
@@ -208,9 +195,9 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _connectingIds.remove(id));
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('เชื่อมต่อไม่สำเร็จ: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('เชื่อมต่อไม่สำเร็จ: $e')),
+        );
       }
     } finally {
       if (wasScanning) _startScan();
@@ -219,9 +206,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
 
   Future<void> _disconnectFrom(BluetoothDevice d) async {
     final id = d.remoteId.str;
-    try {
-      await d.disconnect();
-    } catch (_) {}
+    try { await d.disconnect(); } catch (_) {}
     if (mounted) {
       setState(() {
         _connectedIds.remove(id);
@@ -249,11 +234,10 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
 
   bool _matchSupported(ScanResult r) {
     // ชื่ออุปกรณ์
-    final name =
-        (r.device.platformName.isNotEmpty
-                ? r.device.platformName
-                : r.advertisementData.advName)
-            .toLowerCase();
+    final name = (r.device.platformName.isNotEmpty
+            ? r.device.platformName
+            : r.advertisementData.advName)
+        .toLowerCase();
     if (name.isNotEmpty) {
       for (final k in _nameKeywords) {
         if (name.contains(k)) return true;
@@ -270,8 +254,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     // เคสพิเศษ: Xiaomi/Mi Scale (MIBFS)
     final isXiaomi = r.advertisementData.manufacturerData.keys.contains(0x0157);
     final looksLikeScale = name.contains('mibfs') || name.contains('scale');
-    final hasBodyComp =
-        _advHasSvcTail(r, '181b') || _advHasSvcDataTail(r, '181b');
+    final hasBodyComp = _advHasSvcTail(r, '181b') || _advHasSvcDataTail(r, '181b');
     final hasMiBeacon = _advHasSvcDataTail(r, 'fe95');
 
     if (isXiaomi && (hasBodyComp || hasMiBeacon || looksLikeScale)) return true;
@@ -281,7 +264,11 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
 
   List<String> get _visibleIds {
     final now = DateTime.now();
-    final all = <String>{..._devices.keys, ..._installedIds, ..._connectedIds};
+    final all = <String>{
+      ..._devices.keys,
+      ..._installedIds,
+      ..._connectedIds,
+    };
 
     bool keep(String id) {
       // เก็บถ้าเชื่อมต่ออยู่เสมอ
@@ -351,11 +338,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
             const Padding(
               padding: EdgeInsets.only(right: 12),
               child: Center(
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+                child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
               ),
             ),
         ],
@@ -383,12 +366,12 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                     itemCount: ids.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
-                      final id = ids[i];
-                      final dev = _devices[id];
+                      final id   = ids[i];
+                      final dev  = _devices[id];
                       final name = _names[id] ?? 'Offline';
-                      final installed = _installedIds.contains(id);
+                      final installed  = _installedIds.contains(id);
                       final connecting = _connectingIds.contains(id);
-                      final connected = _connectedIds.contains(id);
+                      final connected  = _connectedIds.contains(id);
 
                       return Card(
                         child: Padding(
@@ -406,9 +389,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                        fontSize: 16, fontWeight: FontWeight.bold),
                                     ),
                                   ),
                                   if (connected)
@@ -419,13 +400,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                                 ],
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                id,
-                                style: const TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: 12,
-                                ),
-                              ),
+                              Text(id, style: const TextStyle(color: Colors.black54, fontSize: 12)),
                               const SizedBox(height: 10),
 
                               Wrap(
@@ -436,11 +411,9 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                                     tooltip: installed
                                         ? 'ลบจากอุปกรณ์ของฉัน'
                                         : 'บันทึกเป็นอุปกรณ์ของฉัน',
-                                    icon: Icon(
-                                      installed
-                                          ? Icons.bookmark_added
-                                          : Icons.bookmark_add_outlined,
-                                    ),
+                                    icon: Icon(installed
+                                        ? Icons.bookmark_added
+                                        : Icons.bookmark_add_outlined),
                                     onPressed: () => _toggleInstalled(id),
                                   ),
                                   if (!connected)
@@ -452,31 +425,22 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
                                           ? const SizedBox(
                                               width: 18,
                                               height: 18,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                              ),
+                                              child: CircularProgressIndicator(strokeWidth: 2),
                                             )
                                           : const Text('เชื่อมต่อ'),
                                     )
                                   else ...[
                                     OutlinedButton(
-                                      onPressed: dev == null
-                                          ? null
-                                          : () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      DevicePage(device: dev),
-                                                ),
-                                              );
-                                            },
+                                      onPressed: dev == null ? null : () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => DevicePage(device: dev)),
+                                        );
+                                      },
                                       child: const Text('เปิด (หน้าอุปกรณ์)'),
                                     ),
                                     ElevatedButton(
-                                      onPressed: dev == null
-                                          ? null
-                                          : () => _disconnectFrom(dev),
+                                      onPressed: dev == null ? null : () => _disconnectFrom(dev),
                                       child: const Text('ตัดการเชื่อมต่อ'),
                                     ),
                                   ],

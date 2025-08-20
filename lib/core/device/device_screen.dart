@@ -29,42 +29,31 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
   // ---- GUIDs ----
   // BP
-  static final Guid svcBp = Guid('00001810-0000-1000-8000-00805f9b34fb');
-  static final Guid chrBpMeas = Guid('00002a35-0000-1000-8000-00805f9b34fb');
+  static final Guid svcBp      = Guid('00001810-0000-1000-8000-00805f9b34fb');
+  static final Guid chrBpMeas  = Guid('00002a35-0000-1000-8000-00805f9b34fb');
   // Thermometer
-  static final Guid svcThermo = Guid('00001809-0000-1000-8000-00805f9b34fb');
-  static final Guid chrTemp = Guid('00002a1c-0000-1000-8000-00805f9b34fb');
+  static final Guid svcThermo  = Guid('00001809-0000-1000-8000-00805f9b34fb');
+  static final Guid chrTemp    = Guid('00002a1c-0000-1000-8000-00805f9b34fb');
   // Glucose
   static final Guid svcGlucose = Guid('00001808-0000-1000-8000-00805f9b34fb');
   static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb');
+  static final Guid chrGluRacp = Guid('00002a52-0000-1000-8000-00805f9b34fb'); // ← เพิ่มบรรทัดนี้
   // Yuwell-like oximeter
-  static final Guid svcFfe0 = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
-  static final Guid chrFfe4 = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
+  static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
+  static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
   // Body Composition (มาตรฐาน) + Xiaomi proprietary
-  static final Guid svcBody = Guid('0000181b-0000-1000-8000-00805f9b34fb');
+  static final Guid svcBody   = Guid('0000181b-0000-1000-8000-00805f9b34fb');
   static final Guid chrBodyMx = Guid('00002a9c-0000-1000-8000-00805f9b34fb');
 
-  static final Guid chr1530 = Guid(
-    '00001530-0000-3512-2118-0009af100700',
-  ); // weight(หลัก)
-  static final Guid chr1531 = Guid(
-    '00001531-0000-3512-2118-0009af100700',
-  ); // alt
-  static final Guid chr1532 = Guid(
-    '00001532-0000-3512-2118-0009af100700',
-  ); // kickoff
-  static final Guid chr1542 = Guid(
-    '00001542-0000-3512-2118-0009af100700',
-  ); // alt
-  static final Guid chr1543 = Guid(
-    '00001543-0000-3512-2118-0009af100700',
-  ); // alt
-  static final Guid chr2A2Fv = Guid(
-    '00002a2f-0000-3512-2118-0009af100700',
-  ); // vendor alt
+  static final Guid chr1530   = Guid('00001530-0000-3512-2118-0009af100700'); // weight(หลัก)
+  static final Guid chr1531   = Guid('00001531-0000-3512-2118-0009af100700'); // alt
+  static final Guid chr1532   = Guid('00001532-0000-3512-2118-0009af100700'); // kickoff
+  static final Guid chr1542   = Guid('00001542-0000-3512-2118-0009af100700'); // alt
+  static final Guid chr1543   = Guid('00001543-0000-3512-2118-0009af100700'); // alt
+  static final Guid chr2A2Fv  = Guid('00002a2f-0000-3512-2118-0009af100700'); // vendor alt
 
   // Jumper oximeter (ล็อกเฉพาะ chr)
-  static final Guid chrCde81 = Guid('cdeacb81-5235-4c07-8846-93a37ee6b86d');
+  static final Guid chrCde81   = Guid('cdeacb81-5235-4c07-8846-93a37ee6b86d');
 
   @override
   void initState() {
@@ -74,9 +63,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
   @override
   void dispose() {
-    for (final s in _sessions.values) {
-      s.dispose();
-    }
+    for (final s in _sessions.values) { s.dispose(); }
     super.dispose();
   }
 
@@ -113,11 +100,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
       onError: (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${d.platformName.isNotEmpty ? d.platformName : d.remoteId.str}: $e',
-            ),
-          ),
+          SnackBar(content: Text('${d.platformName.isNotEmpty ? d.platformName : d.remoteId.str}: $e')),
         );
       },
     );
@@ -159,10 +142,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
     final name = device.platformName.toLowerCase();
 
     // --- Jumper JPD-HA120 (BP: AF30 / FFF0) ---
-    if (name.contains('ha120') ||
-        name.contains('jpd-ha120') ||
-        hasSvcTail('af30') ||
-        hasSvcTail('fff0')) {
+    if (name.contains('ha120') || name.contains('jpd-ha120') || hasSvcTail('af30') || hasSvcTail('fff0')) {
       final s = await JumperJpdHa120(device: device).parse();
       return _ParserBinding.map(s);
     }
@@ -186,8 +166,11 @@ class _DeviceScreenState extends State<DeviceScreen> {
     }
 
     // --- Glucose ---
-    if (hasSvc(svcGlucose) && hasChr(svcGlucose, chrGluMeas)) {
-      final s = await YuwellGlucose(device: device).parse();
+    if (hasSvc(svcGlucose) &&
+        hasChr(svcGlucose, chrGluMeas) &&
+        hasChr(svcGlucose, chrGluRacp)) {
+      final s = await YuwellGlucose(device: device)
+          .parse(fetchLastOnly: true, syncTime: true);
       return _ParserBinding.map(s);
     }
 
@@ -200,20 +183,13 @@ class _DeviceScreenState extends State<DeviceScreen> {
     // --- Mi Body Scale (BCS 0x181B หรือ proprietary 0x1530/0x1531/0x1532/0x1542/0x1543/0x2A2F) ---
     if (hasSvc(svcBody) ||
         hasChr(svcBody, chrBodyMx) ||
-        hasAnyChr(chr1530) ||
-        hasAnyChr(chr1531) ||
-        hasAnyChr(chr1532) ||
-        hasAnyChr(chr1542) ||
-        hasAnyChr(chr1543) ||
-        hasAnyChr(chr2A2Fv)) {
-      final s = await MiBfs05hm(
-        device: device,
-      ).parse(); // ใช้ 1530 เป็นหลัก + fallback อื่น ๆ
+        hasAnyChr(chr1530) || hasAnyChr(chr1531) ||
+        hasAnyChr(chr1532) || hasAnyChr(chr1542) ||
+        hasAnyChr(chr1543) || hasAnyChr(chr2A2Fv)) {
+      final s = await MiBfs05hm(device: device).parse(); // ใช้ 1530 เป็นหลัก + fallback อื่น ๆ
       return _ParserBinding.map(s);
     }
-    throw Exception(
-      'ยังไม่รองรับอุปกรณ์นี้ (ไม่พบ Service/Characteristic ที่รู้จัก)',
-    );
+    throw Exception('ยังไม่รองรับอุปกรณ์นี้ (ไม่พบ Service/Characteristic ที่รู้จัก)');
   }
 
   // ===== UI =====
@@ -248,25 +224,23 @@ class _DeviceScreenState extends State<DeviceScreen> {
       body: _loading && sessions.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : sessions.isEmpty
-          ? const Center(child: Text('ยังไม่พบอุปกรณ์ที่เชื่อมต่อ'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: sessions.length,
-              itemBuilder: (_, i) => _DeviceCard(
-                session: sessions[i],
-                onOpen: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => DevicePage(device: sessions[i].device),
-                    ),
-                  );
-                },
-                onDisconnect: () async {
-                  await sessions[i].device.disconnect();
-                },
-              ),
-            ),
+              ? const Center(child: Text('ยังไม่พบอุปกรณ์ที่เชื่อมต่อ'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: sessions.length,
+                  itemBuilder: (_, i) => _DeviceCard(
+                    session: sessions[i],
+                    onOpen: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => DevicePage(device: sessions[i].device)),
+                      );
+                    },
+                    onDisconnect: () async {
+                      await sessions[i].device.disconnect();
+                    },
+                  ),
+                ),
     );
   }
 }
@@ -289,7 +263,6 @@ class _DeviceCard extends StatelessWidget {
     if (n == null) return null;
     return (n >= 70 && n <= 100) ? n : null;
   }
-
   int? _validPr(String? s) {
     final n = _tryInt(s);
     if (n == null) return null;
@@ -299,149 +272,87 @@ class _DeviceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = session.title;
-    final id = session.device.remoteId.str;
-    final data = session.latestData;
+    final id    = session.device.remoteId.str;
+    final data  = session.latestData;
     final error = session.error;
 
     final spo2 = _validSpo2(data['spo2'] ?? data['SpO2'] ?? data['SPO2']);
-    final pr = _validPr(data['pr'] ?? data['PR'] ?? data['pulse']);
+    final pr   = _validPr (data['pr']   ?? data['PR']   ?? data['pulse']);
     final tempTxt = data['temp'] ?? data['temp_c'];
 
-    final weight = data['weight_kg']; // ✅ น้ำหนักจาก MiBfs05hm
-    final bmi = data['bmi'];
+    final weight = data['weight_kg'];   // ✅ น้ำหนักจาก MiBfs05hm
+    final bmi    = data['bmi'];
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.devices),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton(onPressed: onOpen, child: const Text('เปิด')),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: onDisconnect,
-                  child: const Text('ตัดการเชื่อมต่อ'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text('ID: $id', style: const TextStyle(color: Colors.black54)),
-            const Divider(),
-
-            if (error != null) ...[
-              Text(
-                'ผิดพลาด: $error',
-                style: const TextStyle(color: Colors.red),
-              ),
-              const SizedBox(height: 6),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(
+            children: [
+              const Icon(Icons.devices),
+              const SizedBox(width: 8),
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+              const SizedBox(width: 8),
+              OutlinedButton(onPressed: onOpen, child: const Text('เปิด')),
+              const SizedBox(width: 8),
+              ElevatedButton(onPressed: onDisconnect, child: const Text('ตัดการเชื่อมต่อ')),
             ],
+          ),
+          const SizedBox(height: 4),
+          Text('ID: $id', style: const TextStyle(color: Colors.black54)),
+          const Divider(),
 
-            // ✅ น้ำหนัก (MiBFS)
-            if (weight != null) ...[
-              Text(
-                'Weight',
-                style: const TextStyle(fontSize: 13, color: Colors.black54),
-              ),
-              Text(
-                '$weight kg',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              if (bmi != null)
-                Text('BMI: $bmi', style: const TextStyle(fontSize: 16)),
-              const Divider(),
-            ],
-
-            if (tempTxt != null && tempTxt.isNotEmpty) ...[
-              Text(
-                'Temperature',
-                style: const TextStyle(fontSize: 13, color: Colors.black54),
-              ),
-              Text(
-                '$tempTxt °C',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Divider(),
-            ],
-
-            if (spo2 != null || pr != null) ...[
-              Text(
-                'SpO₂: ${spo2?.toString() ?? '-'} %',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Pulse: ${pr?.toString() ?? '-'} bpm',
-                style: const TextStyle(fontSize: 18),
-              ),
-              const Divider(),
-            ],
-
-            if (data.isEmpty)
-              const Text('ยังไม่มีข้อมูลจากอุปกรณ์')
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: data.entries
-                    .where(
-                      (e) => !{
-                        'weight_kg',
-                        'bmi',
-                        'impedance_ohm',
-                        'src',
-                        'raw',
-                        'spo2',
-                        'SpO2',
-                        'SPO2',
-                        'pr',
-                        'PR',
-                        'pulse',
-                        'temp',
-                        'temp_c',
-                      }.contains(e.key),
-                    )
-                    .map(
-                      (e) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          '${e.key}: ${e.value}',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-
-            // debug fields (ถ้ามี)
-            if (data['src'] != null)
-              Text('src: ${data['src']}', style: const TextStyle(fontSize: 12)),
-            if (data['raw'] != null)
-              Text('raw: ${data['raw']}', style: const TextStyle(fontSize: 12)),
+          if (error != null) ...[
+            Text('ผิดพลาด: $error', style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 6),
           ],
-        ),
+
+          // ✅ น้ำหนัก (MiBFS)
+          if (weight != null) ...[
+            Text('Weight', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            Text('$weight kg', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+            if (bmi != null) Text('BMI: $bmi', style: const TextStyle(fontSize: 16)),
+            const Divider(),
+          ],
+
+          if (tempTxt != null && tempTxt.isNotEmpty) ...[
+            Text('Temperature', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            Text('$tempTxt °C', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const Divider(),
+          ],
+
+          if (spo2 != null || pr != null) ...[
+            Text('SpO₂: ${spo2?.toString() ?? '-'} %',
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            Text('Pulse: ${pr?.toString() ?? '-'} bpm', style: const TextStyle(fontSize: 18)),
+            const Divider(),
+          ],
+
+          if (data.isEmpty)
+            const Text('ยังไม่มีข้อมูลจากอุปกรณ์')
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: data.entries
+                  .where((e) => !{
+                        'weight_kg','bmi','impedance_ohm','src','raw',
+                        'spo2','SpO2','SPO2',
+                        'pr','PR','pulse',
+                        'temp','temp_c',
+                      }.contains(e.key))
+                  .map((e) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 14)),
+                      ))
+                  .toList(),
+            ),
+
+          // debug fields (ถ้ามี)
+          if (data['src'] != null) Text('src: ${data['src']}', style: const TextStyle(fontSize: 12)),
+          if (data['raw'] != null) Text('raw: ${data['raw']}', style: const TextStyle(fontSize: 12)),
+        ]),
       ),
     );
   }
@@ -465,16 +376,14 @@ class _DeviceSession {
   Map<String, String> latestData = {};
   String? error;
 
-  String get title => device.platformName.isNotEmpty
-      ? device.platformName
-      : device.remoteId.str;
+  String get title =>
+      device.platformName.isNotEmpty ? device.platformName : device.remoteId.str;
 
   Future<void> start({
     required Future<_ParserBinding> Function(
       BluetoothDevice device,
       List<BluetoothService> services,
-    )
-    pickParser,
+    ) pickParser,
   }) async {
     _connSub = device.connectionState.listen((s) {
       if (s == BluetoothConnectionState.disconnected) {
@@ -484,22 +393,13 @@ class _DeviceSession {
     });
 
     try {
-      try {
-        await FlutterBluePlus.stopScan();
-      } catch (_) {}
+      try { await FlutterBluePlus.stopScan(); } catch (_) {}
 
       var st = await device.connectionState.first;
       if (st == BluetoothConnectionState.disconnected) {
-        await device.connect(
-          autoConnect: false,
-          timeout: const Duration(seconds: 12),
-        );
+        await device.connect(autoConnect: false, timeout: const Duration(seconds: 12));
         st = await device.connectionState
-            .where(
-              (x) =>
-                  x == BluetoothConnectionState.connected ||
-                  x == BluetoothConnectionState.disconnected,
-            )
+            .where((x) => x == BluetoothConnectionState.connected || x == BluetoothConnectionState.disconnected)
             .first
             .timeout(const Duration(seconds: 12));
         if (st != BluetoothConnectionState.connected) {

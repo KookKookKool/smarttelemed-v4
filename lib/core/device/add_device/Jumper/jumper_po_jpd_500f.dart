@@ -1,6 +1,8 @@
 // lib/core/device/add_device/jumper_po_jpd_500f.dart
 import 'dart:async';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
+
 
 /// Jumper Oximeter (My Oximeter) — อ่าน "เฉพาะ" Characteristic CDEACB81 เท่านั้น
 /// และ "ล็อก" ให้รับเฉพาะเฟรมที่ขึ้นต้นด้วย 0x81

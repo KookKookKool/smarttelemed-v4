@@ -1,7 +1,7 @@
 // lib/core/device/add_device/yuwell_yhw_6.dart
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 
