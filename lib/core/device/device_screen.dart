@@ -17,6 +17,7 @@ import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_po_jpd_500f
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_ha120.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Mi/mibfs_05hm.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_tem_ft95.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_bm57.dart'; //
 
 
 class DeviceScreen extends StatefulWidget {
@@ -197,6 +198,13 @@ class _DeviceScreenState extends State<DeviceScreen> {
       final beurer = BeurerFt95(device: device);
       await beurer.connect();                 // subscribe 0x2A1C ภายในคลาส
       return _ParserBinding.temp(beurer.onTemperature);
+    }
+    
+    // --- Beurer BM57 (ระบุชื่อ + BP service) ---
+    if (name.contains('bm57') && hasSvc(svcBp) && hasChr(svcBp, chrBpMeas)) {
+      final b = BeurerBm57(device: device);
+      await b.start(); // subscribe 0x2A35 / 0x2A36
+      return _ParserBinding.map(b.onBloodPressure);
     }
 
     throw Exception('ยังไม่รองรับอุปกรณ์นี้ (ไม่พบ Service/Characteristic ที่รู้จัก)');

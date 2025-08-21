@@ -14,6 +14,7 @@ import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_po_jpd_500f
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_ha120.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Mi/mibfs_05hm.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_tem_ft95.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_bm57.dart';
 
 
 class DevicePage extends StatefulWidget {
@@ -29,6 +30,9 @@ class _DevicePageState extends State<DevicePage> {
   Map<String, String> _latestData = {};
   String? _error;
   List<BluetoothService> _services = [];
+
+  // หากเป็น BM57 จะไม่ null
+  BeurerBm57? _bm57;
 
   // Known Services/Chars
   // Blood Pressure
@@ -189,6 +193,17 @@ class _DevicePageState extends State<DevicePage> {
         );
         return;
       }
+      // (10) Beurer BM57 (เจาะจงชื่อ + BP service)
+      if (lowerName.contains('bm57') && _hasSvc(svcBp) && _hasChr(svcBp, chrBpMeas)) {
+        _bm57 = BeurerBm57(device: widget.device);
+        await _bm57!.start(); // subscribe 0x2A35/0x2A36
+        _sub?.cancel();
+        _sub = _bm57!.onBloodPressure.listen(
+          (m) => _onData(m),
+          onError: _onErr,
+        );
+        return;
+      }
 
       // ไม่เข้าเงื่อนไขใด → แจ้งและโชว์รายการ UUID ให้ดู
       _error = 'ยังจำแนกอุปกรณ์ไม่สำเร็จ (ไม่พบ Characteristic/Service ที่รองรับ)\n'
@@ -277,6 +292,38 @@ class _DevicePageState extends State<DevicePage> {
     if (n == null) return null;
     return (n >= 30 && n <= 250) ? n : null;
   }
+
+  Future<void> _showBm57Info() async {
+    if (_bm57 == null) return;
+    final info = await _bm57!.readDeviceInfo();
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Beurer BM57 – Device Info'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _kv('Model', info['model']),
+            _kv('Serial', info['serial']),
+            _kv('Firmware', info['firmware']),
+            _kv('Hardware', info['hardware']),
+            _kv('Software', info['software']),
+            _kv('Manufacturer', info['manufacturer']),
+            _kv('System ID', info['system_id']),
+            _kv('Reg Cert', info['regulatory']),
+            _kv('PnP ID', info['pnp_id']),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ปิด')),
+        ],
+      ),
+    );
+  }
+   Widget _kv(String k, String? v) =>
+      Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('$k: ${v ?? '-'}'));
 
   // ---- UI ----
   @override
