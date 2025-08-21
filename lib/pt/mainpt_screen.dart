@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/widget/manubar.dart';
 import 'package:smarttelemed_v4/core/vitalsign/vitalsign_screen.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
 
 class MainPtScreen extends StatelessWidget {
   const MainPtScreen({Key? key}) : super(key: key);
@@ -60,13 +62,11 @@ class _HeaderHospital extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.asset(
-            'assets/esm_logo.png',
-            width: 36,
-            height: 36,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) =>
-                const SizedBox(width: 36, height: 36, child: Icon(Icons.local_hospital)),
+         child: SvgPicture.asset(
+            'assets/logo.svg',
+            width: 60,
+            height: 60,
+            fit: BoxFit.contain,
           ),
         ),
         const SizedBox(width: 12),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class MainPtScreen extends StatelessWidget {
   const MainPtScreen({Key? key}) : super(key: key);
@@ -56,11 +57,11 @@ class _HeaderHospital extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.asset(
-            'assets/esm_logo.png',
-            width: 36,
-            height: 36,
-            fit: BoxFit.cover,
+          child: SvgPicture.asset(
+            'assets/logo.svg',
+            width: (160),
+            height: (160),
+            fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => const SizedBox(
               width: 36,
               height: 36,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/background.dart';
 import 'package:smarttelemed_v4/style/app_colors.dart';
 import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class IdCardPtInsertScreen extends StatelessWidget {
   const IdCardPtInsertScreen({Key? key}) : super(key: key);
@@ -40,12 +41,11 @@ class IdCardPtInsertScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           clipBehavior: Clip.antiAlias,
-                          // child: Image.asset(
-                          //   'assets/logo.png', // ← แก้ path ให้ตรงกับโปรเจกต์
-                          //   fit: BoxFit.cover,
-                          //   errorBuilder: (_, __, ___) => const Center(
-                          //     child: Icon(Icons.local_hospital, size: 24),
-                          //   ),
+                          //  child: SvgPicture.asset(
+                          //   'assets/logo.svg',
+                          //   width: (160),
+                          //   height: (160),
+                          //   fit: BoxFit.contain,
                           // ),
                         ),
                         const SizedBox(width: 12),
@@ -79,7 +79,7 @@ class IdCardPtInsertScreen extends StatelessWidget {
                     children: [
                       const SizedBox(height: 40),
                       // โลโก้กลาง
-                      // Image.asset('assets/logo.png', height: 80),
+                      // Image.asset('assets/logo.svg', height: 80),
                       // const SizedBox(height: 16),
                       // ข้อความ
                       const Text(

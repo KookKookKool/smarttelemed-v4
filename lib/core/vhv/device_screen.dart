@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/background.dart';
 import 'package:smarttelemed_v4/utils/responsive.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
 
 class DeviceScreen extends StatelessWidget {
   const DeviceScreen({Key? key}) : super(key: key);
@@ -27,10 +29,11 @@ class DeviceScreen extends StatelessWidget {
                     builder: (ctx) {
                       final r = ResponsiveSizer(ctx);
                       return Center(
-                        child: Image.asset(
-                          'assets/logo.png',
+                        child: SvgPicture.asset(
+                          'assets/logo.svg',
                           width: r.sw(160),
                           height: r.sh(80),
+                          fit: BoxFit.contain,
                         ),
                       );
                     },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/app_colors.dart';
 import 'package:smarttelemed_v4/utils/responsive.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'login_qrcam.dart';
 
 class LoginTokenPage extends StatefulWidget {
@@ -103,10 +104,11 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
                     final r = ResponsiveSizer(ctx);
                     return Column(
                       children: [
-                        Image.asset(
-                          'assets/logo.png',
-                          width: r.sw(160),
-                          height: r.sh(90),
+                        SvgPicture.asset(
+                        'assets/logo.svg',
+                        width: r.sw(160),
+                        height: r.sw(160),
+                        fit: BoxFit.contain,
                         ),
                         SizedBox(height: r.sh(120)),
                       ],

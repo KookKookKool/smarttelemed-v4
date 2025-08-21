@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class ProfilePtScreen extends StatelessWidget {
   const ProfilePtScreen({Key? key}) : super(key: key);
@@ -46,12 +47,11 @@ class ProfilePtScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           clipBehavior: Clip.antiAlias,
-                          child: Image.asset(
-                            'assets/logo.png', // ← แก้ path ให้ตรงกับโปรเจกต์
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Center(
-                              child: Icon(Icons.local_hospital, size: 24),
-                            ),
+                          child: SvgPicture.asset(
+                            'assets/logo.svg',
+                            width: (160),
+                            height: (160),
+                            fit: BoxFit.contain,
                           ),
                         ),
                         const SizedBox(width: 12),

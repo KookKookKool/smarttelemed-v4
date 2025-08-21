@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/background_2.dart';
 import 'package:smarttelemed_v4/style/app_colors.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class IdCardInsertScreen extends StatelessWidget {
   const IdCardInsertScreen({Key? key}) : super(key: key);
@@ -37,7 +38,12 @@ class IdCardInsertScreen extends StatelessWidget {
                     children: [
                       const SizedBox(height: 40),
                       // โลโก้กลาง
-                      Image.asset('assets/logo.png', height: 80),
+                      SvgPicture.asset(
+                        'assets/logo.svg',
+                        width: (160),
+                        height: (160),
+                        fit: BoxFit.contain,
+                      ),
                       const SizedBox(height: 16),
                       // ข้อความ
                       const Text(
