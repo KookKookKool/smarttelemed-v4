@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  
   flutter_svg: ^2.0.10
   flutter_blue_plus: ^1.34.5
   flutter_blue_plus_windows: ^1.26.1
@@ -50,6 +51,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
+  flutter_launcher_icons: ^0.14.4
   flutter_lints: ^5.0.0
 
 # For information on the generic Dart part of this file, see the
@@ -93,3 +95,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icon/icon.png     # ไฟล์ไอคอนหลัก (แนะนำ 1024x1024, พื้นหลังโปร่งใส)
+  adaptive_icon_background: "#FFFFFF"  # พื้นหลังสำหรับ Android 8+
+  adaptive_icon_foreground: assets/icon/icon.png # หรือใช้ไฟล์ FG แยกที่ตัดพื้นหลังแล้ว
+  remove_alpha_ios: true               # iOS ห้ามมี alpha; ให้แพ็กเกจช่วยลบอัตโนมัติ
+  # (ทางเลือก) รองรับ Themed icon บน Android 13+
+  
