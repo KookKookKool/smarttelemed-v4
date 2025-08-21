@@ -1,9 +1,113 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/background_2.dart';
 import 'package:smarttelemed_v4/style/app_colors.dart';
-
-class IdCardInsertScreen extends StatelessWidget {
+import 'package:provider/provider.dart';
+import 'package:smarttelemed_v4/core/idcard/idcard_reader.dart';
+import 'package:get/get.dart';
+import 'dart:async';
+  class IdCardInsertScreen extends StatefulWidget {
+  
   const IdCardInsertScreen({Key? key}) : super(key: key);
+
+  @override
+  State<IdCardInsertScreen> createState() => _IdCardInsertScreenState();
+  
+  }
+
+class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
+  late ESMIDCard reader;
+  Stream<String>? entry;
+  Timer? readingtime;
+  Timer? reading;
+  bool shownumpad = false;
+  Timer? _timer;
+  Timer? timerreadIDCard;
+
+  @override
+  void initState() {
+    super.initState();
+    reader = ESMIDCard(); // safe runtime init
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    // runs after build()
+    
+    readerID();
+  });
+  }
+
+    
+    void readerID() {
+      try {
+        Future.delayed(const Duration(seconds: 1), () {
+          reader = ESMIDCard.instance;
+           reader.findReader();
+          entry = reader?.getEntry();
+
+          debugPrint('->initstate');
+          if (entry != null) {
+          entry?.listen((String data) async {
+            List<String> splitted = data.split('#');
+            debugPrint("IDCard $data");
+
+            // context.read<DataProvider>().id = splitted[0].toString();
+            // context.read<DataProvider>().regter_data = splitted;
+            // setState(() {
+            //   context.read<DataProvider>().regter_data = splitted;
+            //   context.read<DataProvider>().id = splitted[0].toString();
+            // });
+            // debugPrint(
+            //     "${context.read<DataProvider>().id} / ${splitted[0].toString()}");
+
+            // idcard.setValue(splitted[0]);
+            // if (context.read<DataProvider>().id == splitted[0].toString()) {
+            //   check2();
+            // } else {}
+          }, onError: (error) {
+            debugPrint(error);
+          }, onDone: () {
+            debugPrint('Stream closed!');
+          });
+        } else {}
+        const oneSec = Duration(seconds: 1);
+        reading = Timer.periodic(oneSec, (Timer t) => checkCard());
+      });
+    } on Exception catch (e) {
+      debugPrint('error');
+      debugPrint(e.toString());
+    }
+  }
+
+  void getIdCard() async {
+    // timerreadIDCard = Timer.periodic(const Duration(seconds: 4), (timer) async {
+    //   var url = Uri.parse('http://localhost:8189/api/smartcard/read');
+    //   var res = await http.get(url);
+    //   var resTojson = json.decode(res.body);
+    //   debugPrint("Crde Reader--------------------------------=");
+    //   debugPrint(resTojson.toString());
+    //   if (res.statusCode == 200) {
+    //     context.read<DataProvider>().updateuserinformation(resTojson);
+    //     context.read<DataProvider>().upcorrelationId(resTojson);
+    //     debugPrint(resTojson["claimTypes"][0].toString());
+    //     context
+    //         .read<DataProvider>()
+    //         .updateclaimType(resTojson["claimTypes"][0]);
+    //     check2();
+    //     timerreadIDCard?.cancel();
+    //   }
+    // });
+  }
+
+  void checkCard() {
+    reader?.readAuto();
+  }
+
+  // @override
+  // void dispose() {
+  //   readingtime?.cancel();
+  //   reading?.cancel();
+  //   _timer?.cancel();
+  //   timerreadIDCard?.cancel();
+  //   super.dispose();
+  // }
 
   @override
   Widget build(BuildContext context) {

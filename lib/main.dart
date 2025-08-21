@@ -49,7 +49,7 @@ class MyApp extends StatelessWidget {
         '/loginQRCam': (context) => const LoginQrCamPage(),
         '/device': (context) => const DeviceScreen(),
         '/idcardlog': (context) => const IdCardLoginScreen(),
-        '/idcardinsert': (context) => const IdCardInsertScreen(),
+        '/idcardinsert': (context) => IdCardInsertScreen(),
         '/idcardloader': (context) => const IdCardLoader(),
         '/dashboard': (context) => const DashboardScreen(),
         '/profile': (context) => const ProfileScreen(),
@@ -102,7 +102,9 @@ class _PlusLoaderPageState extends State<PlusLoaderPage> {
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation1, animation2) => const AuthScreen(),
+        // pageBuilder: (context, animation1, animation2) => const AuthScreen(),
+        pageBuilder: (context, animation1, animation2) => const IdCardInsertScreen(),
+        
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
       ),
