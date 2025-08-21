@@ -1,5 +1,6 @@
 // lib/core/device/device_connect.dart
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
@@ -35,23 +36,38 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
 
   // ---------------- Filters ----------------
   Set<String> _installedIds = {};
-  bool _installedOnly = true;
-  bool _supportedOnly = true;
+  bool _installedOnly = false; // แสดงทั้งหมด (auto-connect เฉพาะที่บันทึกไว้)
+  // จะล็อก UI ให้เปิดค่านี้เสมอ
+  bool _supportedOnly = true; // จะล็อก UI ให้ปิดค่านี้เสมอ
 
+  // ---------------- Auto-connect ----------------
+  final Queue<String> _autoQueue = Queue<String>();
+  bool _autoConnecting = false;
+  Timer? _rescanTimer; // สแกนซ้ำเป็นระยะ
+
+  // คีย์/เทลสำหรับช่วยจำแนก (ใช้แค่ UI/ฟิลเตอร์แสดงผล)
   static const Set<String> _supportedServiceTails = {
-    'cb80', // Jumper service
+    'cb80', // Jumper service (บางรุ่น)
     '1822', // PLX (oximeter)
     '1810', // Blood Pressure
-    '1809', // Thermometer
+    '1809', // Thermometer (มาตรฐาน)
     '1808', // Glucose
     '181b', // Body Composition (MIBFS)
     'ffe0', // Yuwell-like oximeter
+    'ffb0', // Jumper BFS-710 family
+    'fee0', // Jumper BFS-710 family
+    'fff0', // ← Jumper FR400 thermometer (vendor)
   };
 
   static const List<String> _nameKeywords = [
+    // Oximeter/BP etc.
     'oximeter','my oximeter','jumper','jpd',
     'yuwell','ua-651','ua651','ye680a',
-    'glucose','mibfs','scale'
+    'glucose','mibfs','scale','bfs','swan',
+    // Thermometer/FR400
+    'thermometer','my thermometer','temperature',
+    'fr400','fr-400','jpd-fr400','jpd fr400',
+    'ft95', // เผื่อเทอร์โมมิเตอร์ Beurer
   ];
 
   // เก็บแค่ 2 นาทีถ้าไม่ได้เชื่อมต่อ (ลิสต์จะไม่ว่างเปล่าทันที)
@@ -60,12 +76,22 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
   @override
   void initState() {
     super.initState();
+
+    // ล็อกโหมดให้แสดง/ต่อเฉพาะอุปกรณ์ที่บันทึกไว้
+    _supportedOnly = true;
+
     _loadInstalledIds();
     _requestPerms().then((_) => _startScan());
+
+    // re-scan อัตโนมัติทุก 8 วินาที (ถ้าไม่ได้สแกนอยู่)
+    _rescanTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (!_isScanning) _startScan();
+    });
   }
 
   @override
   void dispose() {
+    _rescanTimer?.cancel();
     _scanSub?.cancel();
     _isScanningSub?.cancel();
     for (final s in _connSubs.values) { s.cancel(); }
@@ -103,6 +129,37 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     if (mounted) setState(() {});
   }
 
+  // ------------ Auto-connect helpers ------------
+  void _maybeAutoConnect(ScanResult r) {
+    final id = r.device.remoteId.str;
+    if (!_installedIds.contains(id)) return; // <- ไม่บันทึก = ไม่ auto
+    if (_connectingIds.contains(id) || _connectedIds.contains(id) || _autoQueue.contains(id)) return;
+    _autoQueue.add(id);
+    _drainAutoQueue();
+  }
+
+  Future<void> _drainAutoQueue() async {
+    if (_autoConnecting) return;
+    _autoConnecting = true;
+    try {
+      while (_autoQueue.isNotEmpty && mounted) {
+        final id = _autoQueue.removeFirst();
+        final dev = _devices[id];
+        if (dev != null && !_connectedIds.contains(id)) {
+          try {
+            await _connectTo(dev); // มี stopScan/resume ภายในแล้ว
+          } catch (_) {
+            // เงียบไว้เพื่อให้คิวไปต่อ (Snackbar อยู่ใน _connectTo แล้ว)
+          }
+          // เว้นจังหวะกันชน GATT
+          await Future.delayed(const Duration(milliseconds: 250));
+        }
+      }
+    } finally {
+      _autoConnecting = false;
+    }
+  }
+
   // ------------ Scan ------------
   void _startScan() async {
     if (_isScanning) return;
@@ -123,6 +180,9 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
         _lastSeen[id] = now;
         _supportedMap[id] = _matchSupported(r);
         _watchDevice(r.device);
+
+        // 🔁 ต่ออัตโนมัติถ้าเป็นอุปกรณ์ที่บันทึกไว้
+        _maybeAutoConnect(r);
       }
       if (mounted) setState(() {});
     });
@@ -174,7 +234,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     setState(() => _connectingIds.add(id));
     try {
       await d.connect(autoConnect: false, timeout: const Duration(seconds: 12));
-      _installedIds.add(id);
+      _installedIds.add(id);        // บันทึกเข้ารายการของฉันเสมอเมื่อเชื่อมต่อสำเร็จ
       await _saveInstalledIds();
 
       if (!mounted) return;
@@ -244,7 +304,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
       }
     }
 
-    // Service UUIDs
+    // Service UUIDs (โฆษณา)
     for (final g in r.advertisementData.serviceUuids) {
       final s = g.str.toLowerCase();
       final tail = s.length >= 4 ? s.substring(s.length - 4) : s;
@@ -256,8 +316,10 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
     final looksLikeScale = name.contains('mibfs') || name.contains('scale');
     final hasBodyComp = _advHasSvcTail(r, '181b') || _advHasSvcDataTail(r, '181b');
     final hasMiBeacon = _advHasSvcDataTail(r, 'fe95');
-
     if (isXiaomi && (hasBodyComp || hasMiBeacon || looksLikeScale)) return true;
+
+    // เคสพิเศษ: Jumper thermometer (FR400) — Manufacturer ID ที่พบในรูป = 0xC11C
+    if (r.advertisementData.manufacturerData.keys.contains(0xC11C)) return true;
 
     return false;
   }
@@ -345,6 +407,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
       ),
       body: Column(
         children: [
+          // ล็อกโหมด: เฉพาะอุปกรณ์ที่บันทึกไว้
           SwitchListTile(
             title: const Text('แสดงเฉพาะอุปกรณ์ที่ติดตั้งแล้ว'),
             value: _installedOnly,
@@ -356,6 +419,7 @@ class _DeviceConnectPageState extends State<DeviceConnectPage> {
             value: _supportedOnly,
             onChanged: (v) => setState(() => _supportedOnly = v),
           ),
+
           const Divider(height: 1),
 
           Expanded(

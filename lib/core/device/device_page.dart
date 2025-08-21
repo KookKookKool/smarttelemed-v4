@@ -15,7 +15,8 @@ import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_ha120.d
 import 'package:smarttelemed_v4/core/device/add_device/Mi/mibfs_05hm.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_tem_ft95.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_bm57.dart';
-
+import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_bfs710.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_fr400.dart';
 
 class DevicePage extends StatefulWidget {
   final BluetoothDevice device;
@@ -30,15 +31,16 @@ class _DevicePageState extends State<DevicePage> {
   Map<String, String> _latestData = {};
   String? _error;
   List<BluetoothService> _services = [];
-
-  // หากเป็น BM57 จะไม่ null
-  BeurerBm57? _bm57;
+  
+  JumperJpdBfs710? _bfs710;       // สำหรับ BFS-710
+  BeurerBm57? _bm57;              // หากเป็น BM57 จะไม่ null
+  JumperFr400? _fr400;            // FR400 thermometer
 
   // Known Services/Chars
   // Blood Pressure
   static final Guid svcBp      = Guid('00001810-0000-1000-8000-00805f9b34fb');
   static final Guid chrBpMeas  = Guid('00002a35-0000-1000-8000-00805f9b34fb');
-  // Thermometer
+  // Thermometer (มาตรฐาน)
   static final Guid svcThermo  = Guid('00001809-0000-1000-8000-00805f9b34fb');
   static final Guid chrTemp    = Guid('00002a1c-0000-1000-8000-00805f9b34fb');
   // Glucose
@@ -67,6 +69,13 @@ class _DevicePageState extends State<DevicePage> {
   static final Guid chr1543    = Guid('00001543-0000-3512-2118-0009af100700'); // alt (มักเป็น control/ACK)
   static final Guid chr2A2Fv   = Guid('00002a2f-0000-3512-2118-0009af100700'); // vendor alt
 
+  // BFS-710 ใช้สอง service นี้บ่อย
+  static final Guid svcFfb0    = Guid('0000ffb0-0000-1000-8000-00805f9b34fb');
+  static final Guid svcFee0    = Guid('0000fee0-0000-1000-8000-00805f9b34fb');
+
+  // Vendor thermometer (Jumper FR400)
+  static final Guid svcFff0    = Guid('0000fff0-0000-1000-8000-00805f9b34fb');
+
   @override
   void initState() {
     super.initState();
@@ -76,6 +85,8 @@ class _DevicePageState extends State<DevicePage> {
   @override
   void dispose() {
     _sub?.cancel();
+    _bfs710?.stop();
+    _fr400?.dispose();
     super.dispose();
   }
 
@@ -108,12 +119,28 @@ class _DevicePageState extends State<DevicePage> {
       }
 
       // ---------- เลือก parser ตาม services/characteristics (เรียงความสำคัญ) ----------
-
-      // (1) Jumper JPD-HA120 (ชื่อ/ปลาย service พบบ่อย)
       final lowerName = widget.device.platformName.toLowerCase();
       bool hasTail(String t) =>
           _services.any((s){ final u=s.uuid.str.toLowerCase(); return u.endsWith(t); });
-      if (lowerName.contains('ha120') || lowerName.contains('jpd-ha120') || hasTail('af30') || hasTail('fff0')) {
+
+      // (0) Jumper JPD-FR400 – service FFF0 (thermometer, โฆษณาตามรูป)
+      if (_hasSvc(svcFff0)) {
+        // ถ้าเครื่องนี้มี Thermometer มาตรฐานด้วย ให้ใช้มาตรฐานแทน
+        final hasStdThermo = _hasSvc(svcThermo) && _hasChr(svcThermo, chrTemp);
+        if (!hasStdThermo) {
+          _fr400 = JumperFr400(device: widget.device);
+          await _fr400!.start();
+          _sub?.cancel();
+          _sub = _fr400!.onTemperature.listen(
+            (c) => _onData({'temp': c.toStringAsFixed(1)}), // หน่วย °C
+            onError: _onErr,
+          );
+          return;
+        }
+      }
+
+      // (1) Jumper JPD-HA120 — ไม่ใช้ FFF0 เพื่อไม่ชนกับ FR400
+      if (lowerName.contains('ha120') || lowerName.contains('jpd-ha120') || hasTail('af30')) {
         final s = await JumperJpdHa120(device: widget.device).parse();
         _listenMapStream(s);
         return;
@@ -127,7 +154,6 @@ class _DevicePageState extends State<DevicePage> {
       }
 
       // (3) Mi Body Scale (MIBFS 05HM)
-      //    ✅ รองรับทั้งมาตรฐาน BCS 0x181B และ proprietary 0x1530/1531/1532/1542/1543/2A2F
       final hasMibfs =
         _hasSvc(svcBody) || _hasChr(svcBody, chrBodyMx) ||
         _hasAnyChar(chr1530) || _hasAnyChar(chr1531) ||
@@ -154,14 +180,14 @@ class _DevicePageState extends State<DevicePage> {
         return;
       }
 
-      // (6) BP
+      // (6) BP (A&D UA-651BLE)
       if (_hasSvc(svcBp) && _hasChr(svcBp, chrBpMeas)) {
         final s = await AdUa651Ble(device: widget.device).parse();
         _listenBpStream(s);
         return;
       }
 
-      // (7) Thermometer
+      // (7) Thermometer มาตรฐาน (0x1809/0x2A1C)
       if (_hasSvc(svcThermo) && _hasChr(svcThermo, chrTemp)) {
         final s = await YuwellYhw6(device: widget.device).parse();
         _sub?.cancel();
@@ -172,12 +198,12 @@ class _DevicePageState extends State<DevicePage> {
         return;
       }
 
-     // (8) Glucose (ต้องมีทั้ง 0x2A18 และ 0x2A52)
+      // (8) Glucose (ต้องมีทั้ง 0x2A18 และ 0x2A52)
       if (_hasSvc(svcGlucose) &&
           _hasChr(svcGlucose, chrGluMeas) &&
           _hasChr(svcGlucose, chrGluRacp)) {
         final s = await YuwellGlucose(device: widget.device)
-            .parse(fetchLastOnly: true, syncTime: true); // สำคัญ
+            .parse(fetchLastOnly: true, syncTime: true);
         _listenMapStream(s);
         return;
       }
@@ -193,6 +219,7 @@ class _DevicePageState extends State<DevicePage> {
         );
         return;
       }
+
       // (10) Beurer BM57 (เจาะจงชื่อ + BP service)
       if (lowerName.contains('bm57') && _hasSvc(svcBp) && _hasChr(svcBp, chrBpMeas)) {
         _bm57 = BeurerBm57(device: widget.device);
@@ -200,6 +227,21 @@ class _DevicePageState extends State<DevicePage> {
         _sub?.cancel();
         _sub = _bm57!.onBloodPressure.listen(
           (m) => _onData(m),
+          onError: _onErr,
+        );
+        return;
+      } 
+
+      // (11) Jumper BFS-710 (Body Scale) — ตรวจจาก service หรือชื่อเครื่อง
+      final looksLikeBfs = _hasSvc(svcFfb0) ||
+                           _hasSvc(svcFee0) ||
+                           lowerName.contains('bfs') ||
+                           lowerName.contains('swan');
+      if (looksLikeBfs) {
+        _bfs710 = JumperJpdBfs710(device: widget.device, enableLog: false);
+        await _bfs710!.start();
+        _sub = _bfs710!.onWeightKg.listen(
+          (kg) => _onData({'weight_kg': kg.toStringAsFixed(1)}),
           onError: _onErr,
         );
         return;
@@ -322,7 +364,7 @@ class _DevicePageState extends State<DevicePage> {
       ),
     );
   }
-   Widget _kv(String k, String? v) =>
+  Widget _kv(String k, String? v) =>
       Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('$k: ${v ?? '-'}'));
 
   // ---- UI ----
@@ -384,6 +426,24 @@ class _DevicePageState extends State<DevicePage> {
                       const Divider(),
                     ],
 
+                    // ✅ แสดงอุณหภูมิเด่น ๆ หากมี (จาก FR400/FT95/มาตรฐาน)
+                    if (_latestData['temp'] != null) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Icon(Icons.thermostat, size: 28),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${_latestData['temp']} °C',
+                            style: const TextStyle(
+                              fontSize: 40, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Divider(),
+                    ],
+
                     // ถ้าเป็นปลายนิ้ว (SpO2/PR) ก็แสดงแบบสวย ๆ
                     Builder(builder: (_) {
                       final spo2Val = _validSpo2(
@@ -420,6 +480,7 @@ class _DevicePageState extends State<DevicePage> {
                               'weight_kg','bmi','impedance_ohm','src','raw',
                               'spo2','SpO2','SPO2',
                               'pr','PR','pulse',
+                              'temp', // กันซ้ำจากหัวข้ออุณหภูมิ
                             }.contains(e.key))
                         .map((e) => Padding(
                               padding: const EdgeInsets.symmetric(vertical: 2),
