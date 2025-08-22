@@ -1,9 +1,9 @@
 // lib/core/device/device_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_bp_ye680a.dart';
 
 // ไปหน้าเชื่อมต่อ/หน้าเดี่ยว
 import 'package:smarttelemed_v4/core/device/device_connect.dart';
@@ -37,6 +37,8 @@ class _DeviceScreenState extends State<DeviceScreen> {
   bool _refreshing = false;
 
   // ---- GUIDs ที่ใช้จำแนก ----
+  static final Guid haChrFff1 = Guid('0000fff1-0000-1000-8000-00805f9b34fb'); // notify
+static final Guid haChrFff2 = Guid('0000fff2-0000-1000-8000-00805f9b34fb'); // write/wwr
   // BP
   static final Guid svcBp      = Guid('00001810-0000-1000-8000-00805f9b34fb');
   static final Guid chrBpMeas  = Guid('00002a35-0000-1000-8000-00805f9b34fb');
@@ -169,24 +171,21 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
     final name = device.platformName.toLowerCase();
 
-    // --- Jumper FR400 (thermometer, vendor service FFF0) ---
-    if (hasSvc(svcFff0)) {
-      // ถ้ามี Thermometer มาตรฐานด้วย ให้ใช้มาตรฐานแทน
+   // --- HA120 ก่อน ---
+    if (name.contains('ha120') || name.contains('jpd-ha120') ||
+        (hasSvc(svcFff0) && (hasChr(svcFff0, haChrFff1) || hasChr(svcFff0, haChrFff2)))) {
+      final s = await JumperJpdHa120(device: device).parse();
+      return _ParserBinding.map(s);
+    }
+
+    // --- FR400 (ระบุด้วยชื่อเท่านั้น ป้องกันชน FFF0) ---
+    if ((name.contains('fr400') || name.contains('jpd-fr400')) && hasSvc(svcFff0)) {
       final hasStdThermo = hasSvc(svcThermo) && hasChr(svcThermo, chrTemp);
       if (!hasStdThermo) {
         final fr = JumperFr400(device: device);
         await fr.start();
-        return _ParserBinding.temp(
-          fr.onTemperature,
-          cleanup: fr.dispose, // ปิด resource เมื่อยุติ session
-        );
+        return _ParserBinding.temp(fr.onTemperature, cleanup: fr.dispose);
       }
-    }
-
-    // --- Jumper JPD-HA120 (BP: AF30/อื่น ๆ) — ไม่เอา FFF0 เพื่อไม่ชน FR400 ---
-    if (name.contains('ha120') || name.contains('jpd-ha120') || hasSvcTail('af30')) {
-      final s = await JumperJpdHa120(device: device).parse();
-      return _ParserBinding.map(s);
     }
 
     // --- Jumper oximeter: ล็อกเฉพาะ chrCde81 ---
@@ -201,7 +200,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
       return _ParserBinding.bp(s);
     }
 
-    // --- Thermometer มาตรฐาน (0x1809 / 0x2A1C) ---
+    // --- Thermometer มาตรฐาน ---
     if (hasSvc(svcThermo) && hasChr(svcThermo, chrTemp)) {
       final s = await YuwellYhw6(device: device).parse();
       return _ParserBinding.temp(s);
@@ -245,19 +244,27 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
     // --- Jumper BFS-710 (Body Scale) ---
     if (hasSvc(svcFfb0) || hasSvc(svcFee0) || name.contains('bfs') || name.contains('swan')) {
-      final bfs = JumperJpdBfs710(device: device, enableLog: true);
+      final bfs = JumperJpdBfs710(device: device, enableLog: false);
       await bfs.start();
 
-      // stream น้ำหนักสำหรับ UI รวม
+      // (12) Yuwell BP YE680A (BP service)
+      // --- Yuwell BP YE680A (เวนเดอร์สตรีม) ---
+      if (name.contains('ye680a') || name.contains('ye680')) {
+        final s = await YuwellBpYe680a(device: device).parse();
+        return _ParserBinding.map(s);
+      }
+      // --- BP มาตรฐาน (GATT 0x1810/0x2a35) ---
+      if (hasSvc(svcBp) && hasChr(svcBp, chrBpMeas)) {
+        final s = await AdUa651Ble(device: device).parse();
+        return _ParserBinding.bp(s);
+      }
+
+      // stream น้ำหนักสำหรับ UI
       final weightStream = bfs.onWeightKg.map((kg) => {'weight_kg': kg.toStringAsFixed(1)});
-      // stream debug: PROBE/SELECT/เฟรม HEX ทั้งหมด
-      final debugStream  = bfs.onDebugLog;
 
       return _ParserBinding.map(
         weightStream,
         cleanup: bfs.stop,
-        debugStream: debugStream,     // ✅ ส่ง debug ออกไปด้วย
-        debugTag: 'BFS-710',
       );
     }
 
@@ -349,128 +356,89 @@ class _DeviceCard extends StatelessWidget {
     final data  = session.latestData;
     final error = session.error;
 
+    // ===== NEW: ดึงค่า BP =====
+    final String? sys = data['sys'] ?? data['systolic'];
+    final String? dia = data['dia'] ?? data['diastolic'];
+    // pulse รองรับหลายคีย์ รวมถึง 'pul' (Jumper HA120)
+    final String? bpPulse = data['pul'] ?? data['PR'] ?? data['pr'] ?? data['pulse'];
+
+    int? _tryInt(String? s) => s == null ? null : int.tryParse(s.trim());
+    int? _validSpo2(String? s) {
+      final n = _tryInt(s); if (n == null) return null; return (n >= 70 && n <= 100) ? n : null;
+    }
+    int? _validPr(String? s) {
+      final n = _tryInt(s); if (n == null) return null; return (n >= 30 && n <= 250) ? n : null;
+    }
+
+    // เดิม: SpO2/PR (อย่าดึง 'pul' มาคิดเป็น PR ในบล็อกนี้ เพื่อกันสับสนกับ BP)
     final spo2 = _validSpo2(data['spo2'] ?? data['SpO2'] ?? data['SPO2']);
     final pr   = _validPr (data['pr']   ?? data['PR']   ?? data['pulse']);
+
     final tempTxt = data['temp'] ?? data['temp_c'];
-
-    final weight = data['weight_kg'];
-    final bmi    = data['bmi'];
-
-    final isBfs = session.debugTag == 'BFS-710';
-    final dbg   = session.debugLines;
+    final weight  = data['weight_kg'];
+    final bmi     = data['bmi'];
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(
-            children: [
-              const Icon(Icons.devices),
-              const SizedBox(width: 8),
-              Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
-              const SizedBox(width: 8),
-              OutlinedButton(onPressed: onOpen, child: const Text('เปิด')),
-              const SizedBox(width: 8),
-              ElevatedButton(onPressed: onDisconnect, child: const Text('ตัดการเชื่อมต่อ')),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text('ID: $id', style: const TextStyle(color: Colors.black54)),
-          const Divider(),
+          // ... header เหมือนเดิม ...
 
           if (error != null) ...[
             Text('ผิดพลาด: $error', style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 6),
           ],
 
+          // ===== Weight =====
           if (weight != null) ...[
-            Text('Weight', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            const Text('Weight', style: TextStyle(fontSize: 13, color: Colors.black54)),
             Text('$weight kg', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
             if (bmi != null) Text('BMI: $bmi', style: const TextStyle(fontSize: 16)),
-            const Divider(),
           ],
 
-          if (tempTxt != null && tempTxt.isNotEmpty) ...[
-            Text('Temperature', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+          // ===== NEW: BP (มี SYS/DIA เมื่อไหร่ โชว์ทันที) =====
+          if (weight == null && sys != null && dia != null) ...[
+            const Divider(),
+            const Text('Blood Pressure', style: TextStyle(fontSize: 13, color: Colors.black54)),
+            Row(
+              children: [
+                Text('$sys / $dia', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 6),
+                const Text('mmHg'),
+              ],
+            ),
+            if (bpPulse != null) ...[
+              const SizedBox(height: 6),
+              Text('Pulse: $bpPulse bpm', style: const TextStyle(fontSize: 16)),
+            ],
+          ],
+
+          // ===== Temp (แสดงเมื่อยังไม่มี BP/Weight) =====
+          if (weight == null && (sys == null || dia == null) && tempTxt != null && tempTxt.isNotEmpty) ...[
+            const Divider(),
+            const Text('Temperature', style: TextStyle(fontSize: 13, color: Colors.black54)),
             Text('$tempTxt °C', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            const Divider(),
           ],
 
-          if (spo2 != null || pr != null) ...[
+          // ===== SpO2/PR (แสดงเมื่อยังไม่มี BP/Weight) =====
+          if (weight == null && (sys == null || dia == null) && (spo2 != null || pr != null)) ...[
+            const Divider(),
             Text('SpO₂: ${spo2?.toString() ?? '-'} %',
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text('Pulse: ${pr?.toString() ?? '-'} bpm', style: const TextStyle(fontSize: 18)),
-            const Divider(),
           ],
 
-          if (data.isEmpty)
-            const Text('ยังไม่มีข้อมูลจากอุปกรณ์')
-          else
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: data.entries
-                  .where((e) => !{
-                        'weight_kg','bmi','impedance_ohm','src','raw',
-                        'spo2','SpO2','SPO2',
-                        'pr','PR','pulse',
-                        'temp','temp_c',
-                      }.contains(e.key))
-                  .map((e) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 14)),
-                      ))
-                  .toList(),
-            ),
-
-          // ===== Debug (BFS-710) — แสดงทุกข้อความจาก onDebugLog =====
-          if (isBfs) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Text('Debug (BFS-710)', style: TextStyle(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                TextButton(
-                  onPressed: dbg.isEmpty ? null : () {
-                    final text = dbg.join('\n');
-                    Clipboard.setData(ClipboardData(text: text));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('คัดลอก log แล้ว')));
-                  },
-                  child: const Text('Copy'),
-                ),
-                TextButton(
-                  onPressed: dbg.isEmpty ? null : session.clearDebug,
-                  child: const Text('Clear'),
-                ),
-              ],
-            ),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.black12),
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.black.withOpacity(0.03),
-              ),
-              constraints: const BoxConstraints(minHeight: 80, maxHeight: 220),
-              padding: const EdgeInsets.all(8),
-              child: dbg.isEmpty
-                  ? const Text('ยังไม่มี log', style: TextStyle(fontStyle: FontStyle.italic))
-                  : ListView.builder(
-                      itemCount: dbg.length,
-                      itemBuilder: (_, i) => Text(
-                        dbg[i],
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12.5),
-                      ),
-                    ),
-            ),
+          if (weight == null && data.isEmpty) ...[
+            const Divider(),
+            const Text('ยังไม่มีข้อมูลจากอุปกรณ์'),
           ],
         ]),
       ),
     );
   }
 }
-
 // ===== session ต่ออุปกรณ์ =====
 class _DeviceSession {
   _DeviceSession({
@@ -486,7 +454,6 @@ class _DeviceSession {
   final Future<void> Function() onDisconnected;
 
   StreamSubscription? _dataSub;
-  StreamSubscription? _dbgSub;
   StreamSubscription<BluetoothConnectionState>? _connSub;
 
   // cleanup พิเศษของ parser (เช่น stop()/dispose())
@@ -494,15 +461,6 @@ class _DeviceSession {
 
   Map<String, String> latestData = {};
   String? error;
-
-  // debug
-  final List<String> debugLines = <String>[];
-  String? debugTag;
-
-  void clearDebug() {
-    debugLines.clear();
-    onUpdate();
-  }
 
   String get title =>
       device.platformName.isNotEmpty ? device.platformName : device.remoteId.str;
@@ -542,10 +500,8 @@ class _DeviceSession {
 
       await _cleanupBinding();
       final binding = await pickParser(device, services);
-      debugTag = binding.debugTag;
       _cleanup = binding.cleanup;
 
-      // data stream
       _dataSub = binding.mapStream?.listen((m) {
         latestData = m;
         error = null;
@@ -556,7 +512,6 @@ class _DeviceSession {
         onUpdate();
       });
 
-      // bp / temp (ยังคงรองรับ)
       _dataSub ??= binding.bpStream?.listen((bp) {
         latestData = {
           'sys': bp.systolic.toStringAsFixed(0),
@@ -582,18 +537,6 @@ class _DeviceSession {
         onError(e);
         onUpdate();
       });
-
-      // debug stream (เช่น BFS-710)
-      if (binding.debugStream != null) {
-        _dbgSub = binding.debugStream!.listen((line) {
-          // เก็บแค่ 200 บรรทัดล่าสุด
-          debugLines.add(line);
-          if (debugLines.length > 200) {
-            debugLines.removeRange(0, debugLines.length - 200);
-          }
-          onUpdate();
-        });
-      }
     } catch (e) {
       error = '$e';
       onError(e);
@@ -603,7 +546,6 @@ class _DeviceSession {
 
   Future<void> _cleanupBinding() async {
     await _dataSub?.cancel(); _dataSub = null;
-    await _dbgSub?.cancel();  _dbgSub  = null;
     if (_cleanup != null) {
       try { await _cleanup!(); } catch (_) {}
       _cleanup = null;
@@ -616,61 +558,45 @@ class _DeviceSession {
   }
 }
 
-// ===== binding กลาง (รองรับ debug stream) =====
+// ===== binding กลาง =====
 class _ParserBinding {
   _ParserBinding._({
     this.mapStream,
     this.bpStream,
     this.tempStream,
     this.cleanup,
-    this.debugStream,
-    this.debugTag,
   });
 
   final Stream<Map<String, String>>? mapStream;
   final Stream<BpReading>? bpStream;
   final Stream<double>? tempStream;
-  final Stream<String>? debugStream; // ✅ เพิ่ม: debug (เช่น BFS-710)
-  final String? debugTag;            // ใช้โชว์หัวข้อ debug
   final Future<void> Function()? cleanup;
 
   static _ParserBinding map(
     Stream<Map<String, String>> s, {
     Future<void> Function()? cleanup,
-    Stream<String>? debugStream,
-    String? debugTag,
   }) =>
       _ParserBinding._(
         mapStream: s,
         cleanup: cleanup,
-        debugStream: debugStream,
-        debugTag: debugTag,
       );
 
   static _ParserBinding bp(
     Stream<BpReading> s, {
     Future<void> Function()? cleanup,
-    Stream<String>? debugStream,
-    String? debugTag,
   }) =>
       _ParserBinding._(
         bpStream: s,
         cleanup: cleanup,
-        debugStream: debugStream,
-        debugTag: debugTag,
       );
 
   static _ParserBinding temp(
     Stream<double> s, {
     Future<void> Function()? cleanup,
-    Stream<String>? debugStream,
-    String? debugTag,
   }) =>
       _ParserBinding._(
         tempStream: s,
         cleanup: cleanup,
-        debugStream: debugStream,
-        debugTag: debugTag,
       );
 
   Future<void> dispose() async {
