@@ -3,12 +3,13 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:io' show Platform;
 
-import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus; // <- import หลัก (BluetoothDevice/Guid/..)
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp show FlutterBluePlusException;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp show FlutterBluePlusException; // <- เอาไว้จับ exception เฉพาะ
+
 /// อ่านค่า Glucose ผ่าน Glucose Service (0x1808)
 /// - Measurement (0x2A18) → Notify
-/// - RACP (0x2A52) → Indicate + Write (ดึงประวัติ)
+/// - RACP (0x2A52) → Indicate + Write (ดึงประวัติ) [อาจไม่มีในบางรุ่น]
 /// ส่งออก Stream<Map<String,String>>
 class YuwellGlucose {
   YuwellGlucose({required this.device});
@@ -19,7 +20,7 @@ class YuwellGlucose {
   static final Guid _chrMeas    = Guid('00002a18-0000-1000-8000-00805f9b34fb'); // Notify
   static final Guid _chrContext = Guid('00002a34-0000-1000-8000-00805f9b34fb'); // Notify (optional)
   static final Guid _chrFeature = Guid('00002a51-0000-1000-8000-00805f9b34fb'); // Read (optional)
-  static final Guid _chrRacp    = Guid('00002a52-0000-1000-8000-00805f9b34fb'); // Indicate + Write
+  static final Guid _chrRacp    = Guid('00002a52-0000-1000-8000-00805f9b34fb'); // Indicate + Write (optional)
 
   // Current Time (บางรุ่นต้องตั้งเวลาก่อน)
   static final Guid _svcTime    = Guid('00001805-0000-1000-8000-00805f9b34fb');
@@ -27,39 +28,57 @@ class YuwellGlucose {
 
   final _controller = StreamController<Map<String, String>>.broadcast();
   StreamSubscription<List<int>>? _subMeas;
-  StreamSubscription<List<int>>? _subRacp;
+  StreamSubscription<List<int>>? _subMeas2; // dual listener (compat)
+  StreamSubscription<List<int>>? _subRacp;  // optional
+  String? _lastRaw; // de-dup
 
+  /// fetchLastOnly: true = ขอเรคอร์ดล่าสุดก่อน (fallback เป็น all/filters)
+  /// syncTime: true = ตั้งเวลา (ถ้ารองรับ)
+  /// ensureBond: true = บังคับ pair เฉพาะครั้งแรก (ค่าเริ่ม false เพื่อลด popup)
   Future<Stream<Map<String, String>>> parse({
     bool fetchLastOnly = true,
     bool syncTime = false,
+    bool ensureBond = false,
   }) async {
-    // ensure connected + ขอ MTU + (Android) bond (ลดโอกาส error:13)
+    // --- Connect + MTU + (option) Bond ---
     if (await device.connectionState.first != BluetoothConnectionState.connected) {
       await device.connect(timeout: const Duration(seconds: 10));
     }
     try { await device.requestMtu(247); } catch (_) {}
-    if (Platform.isAndroid) {
+    if (Platform.isAndroid && ensureBond) {
       try { await device.createBond(); } catch (_) {}
     }
 
-    // discover
+    // --- Discover ---
     final services = await device.discoverServices();
     final svcG = services.firstWhere(
       (s) => s.uuid == _svcGlucose,
       orElse: () => throw Exception('ไม่พบ Glucose Service (0x1808)'),
     );
+    // ต้องมี Measurement เสมอ
     final chrMeas = svcG.characteristics.firstWhere(
       (c) => c.uuid == _chrMeas,
       orElse: () => throw Exception('ไม่พบ Glucose Measurement (0x2A18)'),
     );
-    final chrRacp = svcG.characteristics.firstWhere(
-      (c) => c.uuid == _chrRacp,
-      orElse: () => throw Exception('ไม่พบ RACP (0x2A52)'),
-    );
+    // RACP "อาจ" ไม่มี → ทำเป็น optional
+    final BluetoothCharacteristic? chrRacp =
+        svcG.characteristics.where((c) => c.uuid == _chrRacp).firstOrNull;
     final BluetoothCharacteristic? chrContext =
         svcG.characteristics.where((c) => c.uuid == _chrContext).firstOrNull;
 
-    // (optional) sync time
+    // (optional) อ่าน Feature เพื่อดีบักว่ารองรับ RACP หรือไม่
+    try {
+      final chrFeat = svcG.characteristics.where((c) => c.uuid == _chrFeature).firstOrNull;
+      if (chrFeat != null && (chrFeat.properties.read)) {
+        final feat = await chrFeat.read();
+        if (feat.length >= 2) {
+          final f = feat[0] | (feat[1] << 8);
+          _controller.add({'dbg': 'feature=0x${f.toRadixString(16)}'});
+        }
+      }
+    } catch (_) {}
+
+    // --- (optional) Sync time ---
     if (syncTime) {
       final svcT = services.where((s) => s.uuid == _svcTime).firstOrNull;
       final chrCT = svcT?.characteristics.where((c) => c.uuid == _chrCurTime).firstOrNull;
@@ -68,48 +87,45 @@ class YuwellGlucose {
       }
     }
 
-    // enable notify/indicate
+    // --- Enable notify/indicate ---
     await chrMeas.setNotifyValue(true);
-    await chrRacp.setNotifyValue(true);
+    if (chrRacp != null) {
+      await chrRacp.setNotifyValue(true);
+    }
     if (chrContext != null) { try { await chrContext.setNotifyValue(true); } catch (_) {} }
 
-    // ให้ CCCD เซ็ตเสร็จก่อนค่อยเขียน RACP (สำคัญกับ Android)
+    // บางสแตกต้องหน่วงให้ CCCD เสถียร
     await Future.delayed(const Duration(milliseconds: 400));
 
-    // listeners
+    // --- Listen measurement (dual subscription: onValueReceived + lastValueStream) ---
     await _subMeas?.cancel();
-    _subMeas = chrMeas.lastValueStream.listen((data) {
-      final out = _parseGlucoseMeasurement(data);
-      if (out != null) _controller.add({...out, 'src': 'yuwell_glucose'});
+    _subMeas = chrMeas.onValueReceived.listen((data) {
+      _pushIfParsed(data);
     });
 
-    await _subRacp?.cancel();
-    _subRacp = chrRacp.lastValueStream.listen((d) {
-      if (d.isNotEmpty) _controller.add({'racp': _hex(d)});
+    // เพิ่มอีกชุด (เผื่อบางแพลตฟอร์มยิงผ่าน lastValueStream เท่านั้น)
+    await _subMeas2?.cancel();
+    _subMeas2 = chrMeas.lastValueStream.listen((data) {
+      _pushIfParsed(data);
     });
 
-    // helper: รอ indication ครั้งถัดไปของ RACP
-    Future<List<int>> _awaitRacpOnce({Duration timeout = const Duration(seconds: 3)}) async {
-      final c = Completer<List<int>>();
-      StreamSubscription<List<int>>? tmp;
-      tmp = chrRacp.lastValueStream.listen((d) {
-        if (!c.isCompleted) c.complete(d);
-        tmp?.cancel();
-      });
-      try { return await c.future.timeout(timeout, onTimeout: () => <int>[]); }
-      finally { await tmp?.cancel(); }
+    // prime read เพื่อกระตุ้น (บางรุ่นจำเป็น)
+    try { await chrMeas.read(); } catch (_) {}
+
+    // ====== ถ้ามี RACP → สั่งดึงเรคอร์ด, ถ้าไม่มี → จบที่ listen measurement ======
+    if (chrRacp == null) {
+      _controller.add({'dbg': 'no_racp_measurement_only'});
+      return _controller.stream;
     }
 
-    // ========= แกนสำคัญ: safe write แก้ error 13 =========
+    // --- Helpers: safe write + await ack (แก้ error 13 และกัน race) ---
     Future<void> _safeWrite(List<int> v) async {
-  // ถ้า char เขียนได้แค่ no-response ก็ใช้แบบนั้นก่อน
       final preferNoResp = !chrRacp.properties.write && chrRacp.properties.writeWithoutResponse;
       Future<void> _do(bool noResp) => chrRacp.write(v, withoutResponse: noResp);
-
       try {
-        await _do(preferNoResp ? true : false); // ปกติใช้ with-response
+        await _do(preferNoResp ? true : false);
       } on fbp.FlutterBluePlusException catch (e) {
-        final msg = e.toString().toLowerCase(); // <-- ใช้ toString() แทน errorString
+        final msg = e.toString().toLowerCase();
         final isLen13 = msg.contains('android-code: 13') || msg.contains('gatt_invalid_attribute_length');
         if (isLen13) {
           await Future.delayed(const Duration(milliseconds: 120));
@@ -119,51 +135,87 @@ class YuwellGlucose {
         }
       }
     }
-    // =====================================================
+
+    // รอ ACK แบบ “ติด listener ก่อนเขียน”
+    Future<List<int>> _awaitAckAfterWrite(List<int> cmd, {Duration timeout = const Duration(seconds: 3)}) async {
+      final c = Completer<List<int>>();
+      StreamSubscription<List<int>>? tmp1;
+      StreamSubscription<List<int>>? tmp2;
+
+      void complete(List<int> d) {
+        if (!c.isCompleted) c.complete(d);
+      }
+
+      // ติดทั้ง onValueReceived และ lastValueStream (กันพลาด)
+      tmp1 = chrRacp.onValueReceived.listen(complete);
+      tmp2 = chrRacp.lastValueStream.listen(complete);
+
+      try {
+        await _safeWrite(cmd);
+        final ack = await c.future.timeout(timeout, onTimeout: () => <int>[]);
+        if (ack.isNotEmpty) _controller.add({'racp': _hex(ack)});
+        return ack;
+      } finally {
+        await tmp1?.cancel();
+        await tmp2?.cancel();
+      }
+    }
 
     Future<void> _abort() async {
-      try { await _safeWrite([0x03, 0x00]); await _awaitRacpOnce(); } catch (_) {}
+      try { await _awaitAckAfterWrite([0x03, 0x00]); } catch (_) {}
     }
-    Future<List<int>> _requestAndAck(List<int> cmd) async {
-      await _safeWrite(cmd);
-      final ack = await _awaitRacpOnce(); // รอ Response Code ปิดงาน
-      if (ack.isNotEmpty) _controller.add({'racp': _hex(ack)});
-      return ack;
-    }
+
     bool _ok(List<int> a) => (a.length >= 4 && a[0] == 0x06 && a[2] == 0x01 && a[3] == 0x01);
 
-    // 1) ขอจำนวนเรคอร์ดก่อน
-    await _safeWrite([0x04, 0x01]);                 // Report number (All)
-    final rnum = await _awaitRacpOnce();            // คาดหวัง [0x05,0x00,count_lo,count_hi]
-    int count = (rnum.length >= 4 && rnum[0] == 0x05 && rnum[1] == 0x00)
-        ? (rnum[2] | (rnum[3] << 8))
-        : 0;
-    if (count == 0) { _controller.add({'racp_num': '0'}); return _controller.stream; }
+    // --- 1) ขอจำนวนเรคอร์ดก่อน ---
+    final rnum = await _awaitAckAfterWrite([0x04, 0x01]); // Report number, All
+    int count = (rnum.length >= 4 && rnum[0] == 0x05 && rnum[1] == 0x00) ? (rnum[2] | (rnum[3] << 8)) : 0;
+    if (count == 0) {
+      _controller.add({'racp_num': '0', 'dbg': 'no_records'});
+      // ยังคง listen measurement เผื่ออุปกรณ์ส่ง Live มา
+      return _controller.stream;
+    }
     _controller.add({'racp_num': count.toString()});
 
-    // 2) ขอเรคอร์ด + fallback
+    // --- 2) ขอเรคอร์ด + fallback มาตรฐาน ---
     List<int> ack = <int>[];
     if (fetchLastOnly) {
-      ack = await _requestAndAck([0x01, 0x06]);     // last
-      if (!_ok(ack)) { await _abort(); ack = await _requestAndAck([0x01, 0x01]); } // all
+      ack = await _awaitAckAfterWrite([0x01, 0x06]);               // last
+      if (!_ok(ack)) { await _abort(); ack = await _awaitAckAfterWrite([0x01, 0x01]); } // all
     } else {
-      ack = await _requestAndAck([0x01, 0x01]);     // all
+      ack = await _awaitAckAfterWrite([0x01, 0x01]);                // all
     }
-    if (!_ok(ack)) {                                 // >= seq 1
+    if (!_ok(ack)) {
       await _abort();
-      ack = await _requestAndAck([0x01, 0x03, 0x01, 0x01, 0x00]);
+      ack = await _awaitAckAfterWrite([0x01, 0x03, 0x01, 0x01, 0x00]); // >= seq 1
     }
-    if (!_ok(ack)) {                                 // within 0..65535
+    if (!_ok(ack)) {
       await _abort();
-      ack = await _requestAndAck([0x01, 0x04, 0x01, 0x00, 0x00, 0xFF, 0xFF]);
+      ack = await _awaitAckAfterWrite([0x01, 0x04, 0x01, 0x00, 0x00, 0xFF, 0xFF]); // range 0..65535
     }
 
-    // success แล้ว device จะ notify 0x2A18 เข้ามาเอง
+    // success แล้ว device จะ notify 0x2A18 เข้ามาเอง (เรา listen ไว้แล้ว)
     return _controller.stream;
+  }
+
+  void _pushIfParsed(List<int> data) {
+    // de-dup ช็อตสั้น ๆ
+    final raw = _hex(data);
+    if (raw == _lastRaw) return;
+    _lastRaw = raw;
+
+    final out = _parseGlucoseMeasurement(data);
+    if (out != null) {
+      _controller.add({...out, 'src': 'yuwell_glucose'});
+    } else {
+      // ฝากไว้ดีบักเวลาอุปกรณ์ส่ง packet อื่น
+      _controller.add({'dbg': 'meas_unparsed', 'raw': raw});
+    }
   }
 
   Future<void> dispose() async {
     await _subMeas?.cancel();
+    await _subMeas2?.cancel();
     await _subRacp?.cancel();
     await _controller.close();
   }
@@ -234,23 +286,6 @@ class YuwellGlucose {
   }
 
   // ---------- helpers ----------
-  int _toInt16le(int b0, int b1) {
-    int v = (b1 << 8) | (b0 & 0xFF);
-    if (v & 0x8000 != 0) v = v - 0x10000;
-    return v;
-  }
-
-  /// IEEE-11073 16-bit SFLOAT → double
-  double? _decodeSfloat16(int b0, int b1) {
-    int raw = (b1 << 8) | (b0 & 0xFF);
-    if (raw == 0x07FF || raw == 0x0800 || raw == 0x07FE) return null;
-    int mantissa = raw & 0x0FFF;
-    int exponent = (raw & 0xF000) >> 12;
-    if ((mantissa & 0x0800) != 0) mantissa |= ~0x0FFF;
-    if ((exponent & 0x0008) != 0) exponent |= ~0x000F;
-    return mantissa * math.pow(10.0, exponent).toDouble();
-  }
-
   Future<void> _writeCurrentTime(BluetoothCharacteristic chrCT) async {
     final now = DateTime.now();
     final payload = <int>[
@@ -261,6 +296,22 @@ class YuwellGlucose {
       0x00, // adjust reason
     ];
     await chrCT.write(payload, withoutResponse: false);
+  }
+
+  int _toInt16le(int b0, int b1) {
+    int v = (b1 << 8) | (b0 & 0xFF);
+    if (v & 0x8000 != 0) v = v - 0x10000;
+    return v;
+  }
+
+  double? _decodeSfloat16(int b0, int b1) {
+    int raw = (b1 << 8) | (b0 & 0xFF);
+    if (raw == 0x07FF || raw == 0x0800 || raw == 0x07FE) return null;
+    int mantissa = raw & 0x0FFF;
+    int exponent = (raw & 0xF000) >> 12;
+    if ((mantissa & 0x0800) != 0) mantissa |= ~0x0FFF;
+    if ((exponent & 0x0008) != 0) exponent |= ~0x000F;
+    return mantissa * math.pow(10.0, exponent).toDouble();
   }
 
   String _fmtTs(int y, int m, int d, int h, int min, int s) {

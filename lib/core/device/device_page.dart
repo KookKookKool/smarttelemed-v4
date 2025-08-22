@@ -198,15 +198,19 @@ class _DevicePageState extends State<DevicePage> {
         return;
       }
 
-      // (8) Glucose (ต้องมีทั้ง 0x2A18 และ 0x2A52)
-      if (_hasSvc(svcGlucose) &&
-          _hasChr(svcGlucose, chrGluMeas) &&
-          _hasChr(svcGlucose, chrGluRacp)) {
-        final s = await YuwellGlucose(device: widget.device)
-            .parse(fetchLastOnly: true, syncTime: true);
+      // (8) Glucose
+      if (_hasSvc(svcGlucose) && _hasChr(svcGlucose, chrGluMeas) && _hasChr(svcGlucose, chrGluRacp)) {
+        final s = await YuwellGlucose(device: widget.device).parse(fetchLastOnly: true, syncTime: true);
         _listenMapStream(s);
         return;
       }
+      // fallback: มีแค่ Meas
+      if (_hasSvc(svcGlucose) && _hasChr(svcGlucose, chrGluMeas)) {
+        final s = await YuwellGlucose(device: widget.device).parse(fetchLastOnly: true, syncTime: false);
+        _listenMapStream(s);
+        return;
+      }
+
 
       // (9) Beurer FT95 Thermometer
       if (lowerName.contains('ft95') && _hasSvc(svcThermo) && _hasChr(svcThermo, chrTemp)) {
@@ -473,19 +477,20 @@ class _DevicePageState extends State<DevicePage> {
                       }
                       return const SizedBox.shrink();
                     }),
-
                     // แสดงคีย์อื่น ๆ ทั้งหมด (ยกเว้นที่เราจัดรูปแบบไปแล้ว)
                     ..._latestData.entries
                         .where((e) => !{
-                              'weight_kg','bmi','impedance_ohm','src','raw',
+                              // ชุดที่ไม่ต้องแสดงซ้ำ
+                              'weight_kg','bmi','impedance_ohm',
                               'spo2','SpO2','SPO2',
                               'pr','PR','pulse',
-                              'temp', // กันซ้ำจากหัวข้ออุณหภูมิ
+                              'temp','temp_c',
+                              // 👇 กลูโคส + ดีบัก
+                              'mgdl','mmol','seq','ts','racp','racp_num','src','raw',
                             }.contains(e.key))
                         .map((e) => Padding(
                               padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Text('${e.key}: ${e.value}',
-                                  style: const TextStyle(fontSize: 14)),
+                              child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 14)),
                             )),
                     // debug fields (ถ้ามี)
                     if (_latestData['src'] != null)
