@@ -102,8 +102,8 @@ class _PlusLoaderPageState extends State<PlusLoaderPage> {
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        // pageBuilder: (context, animation1, animation2) => const AuthScreen(),
-        pageBuilder: (context, animation1, animation2) => const IdCardInsertScreen(),
+        pageBuilder: (context, animation1, animation2) => const AuthScreen(),
+        // pageBuilder: (context, animation1, animation2) => const IdCardInsertScreen(),
         
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
