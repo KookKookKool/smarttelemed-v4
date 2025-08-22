@@ -28,9 +28,14 @@ import 'package:smarttelemed_v4/core/doctor/doctor_result_screen.dart';
 import 'package:smarttelemed_v4/core/device/device_connect.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:smarttelemed_v4/core/device/vitals.dart';
+import 'package:smarttelemed_v4/core/device/device_hub.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
+  await Vitals.I.ensure(); // โหลดค่าล่าสุดจาก SharedPreferences
+  await DeviceHub.I.ensureStarted();
   runApp(const MyApp());
 }
 

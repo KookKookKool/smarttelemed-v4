@@ -55,7 +55,7 @@ class SettingScreen extends StatelessWidget {
                     leading: const Icon(Icons.link_rounded, color: iconColor),
                     title: 'เชื่อมต่ออุปกรณ์',
                     trailing: arrow,
-                    onTap: () => _snack(context, 'เปิดหน้าเชื่อมต่ออุปกรณ์'),
+                    onTap: () => Navigator.pushNamed(context, '/deviceConnect'),
                   ),
                   divider,
                   _Tile(

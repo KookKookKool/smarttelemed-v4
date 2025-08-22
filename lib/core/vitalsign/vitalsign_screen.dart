@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/background.dart';
 import 'package:smarttelemed_v4/widget/manubar.dart';
-import 'widgets/vital_sign_cards.dart';
+import 'package:smarttelemed_v4/core/device/device_dashboard.dart';
+import 'package:smarttelemed_v4/core/device/widgets/connected_devices_section.dart';
+// import 'widgets/vital_sign_cards.dart';
 import 'widgets/menu_section.dart';
-import 'widgets/device_list.dart';
+// import 'widgets/device_list.dart';
 
 class VitalSignScreen extends StatelessWidget {
   const VitalSignScreen({Key? key}) : super(key: key);
@@ -54,7 +56,8 @@ class VitalSignScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Vital Sign Cards Section
-                        VitalSignCards(),
+                        // VitalSignCards(),
+                        DeviceDashboardSection(),
                         SizedBox(height: 16),
 
                         // Menu Section
@@ -62,7 +65,7 @@ class VitalSignScreen extends StatelessWidget {
                         SizedBox(height: 16),
 
                         // Device List Section
-                        DeviceList(),
+                        ConnectedDevicesSection(),
                         SizedBox(height: 80), // Bottom padding for navigation
                       ],
                     ),
