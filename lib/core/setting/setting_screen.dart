@@ -1,6 +1,7 @@
 // lib/core/setting/setting_screen.dart
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:smarttelemed_v4/storage/api_data_view_screen.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({Key? key}) : super(key: key);
@@ -58,7 +59,26 @@ class SettingScreen extends StatelessWidget {
                   ),
                   divider,
                   _Tile(
-                    leading: const Icon(Icons.error_outline_rounded, color: iconColor),
+                    leading: const Icon(
+                      Icons.storage_rounded,
+                      color: iconColor,
+                    ),
+                    title: 'ดูข้อมูล API ที่เก็บไว้',
+                    trailing: arrow,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (ctx) => const ApiDataViewScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  divider,
+                  _Tile(
+                    leading: const Icon(
+                      Icons.error_outline_rounded,
+                      color: iconColor,
+                    ),
                     title: 'ช่วยเหลือ',
                     trailing: arrow,
                     onTap: () {
@@ -113,7 +133,8 @@ class SettingScreen extends StatelessWidget {
               child: Column(
                 children: [
                   TextButton(
-                    onPressed: () => _snack(context, 'เปิดนโยบายความเป็นส่วนตัว'),
+                    onPressed: () =>
+                        _snack(context, 'เปิดนโยบายความเป็นส่วนตัว'),
                     child: const Text(
                       'นโยบายความเป็นส่วนตัว',
                       style: TextStyle(color: Color(0xFF6B7280)),
@@ -123,7 +144,10 @@ class SettingScreen extends StatelessWidget {
                     onPressed: () => _snack(context, 'เปิดเงื่อนไข และข้อตกลง'),
                     child: const Text(
                       'เงื่อนไข และข้อตกลง',
-                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12.5),
+                      style: TextStyle(
+                        color: Color(0xFF9CA3AF),
+                        fontSize: 12.5,
+                      ),
                     ),
                   ),
                 ],

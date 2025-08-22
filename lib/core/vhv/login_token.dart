@@ -3,6 +3,8 @@ import 'package:smarttelemed_v4/style/app_colors.dart';
 import 'package:smarttelemed_v4/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'login_qrcam.dart';
+import 'package:smarttelemed_v4/api/care_unit_api.dart';
+import 'package:smarttelemed_v4/storage/care_unit_storage.dart';
 
 class LoginTokenPage extends StatefulWidget {
   const LoginTokenPage({Key? key}) : super(key: key);
@@ -15,24 +17,52 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
   final TextEditingController _tokenController = TextEditingController();
   String? _errorText;
 
-  void _onConfirm() {
-    // final token = _tokenController.text.trim();
-    // if (token.isEmpty) {
-    //   setState(() {
-    //     _errorText = 'กรุณากรอก Token';
-    //   });
-    //   return;
-    // }
-    // if (token.length != 1) {
-    //   setState(() {
-    //     _errorText = 'กรุณากรอก Token ให้ครบ 13 หลัก';
-    //   });
-    //   return;
-    // }
-    // setState(() {
-    //   _errorText = null;
-    // });
-    Navigator.pushNamed(context, '/device');
+  Map<String, dynamic>? _careUnitData; // เก็บข้อมูลที่ได้จาก API
+
+  Future<void> _onConfirm() async {
+    final token = _tokenController.text.trim();
+    if (token.isEmpty) {
+      setState(() {
+        _errorText = 'กรุณากรอก Token';
+      });
+      return;
+    }
+    setState(() {
+      _errorText = null;
+    });
+
+    // เรียก API และบันทึกข้อมูลลง Hive
+    final result = await CareUnitApi.fetchCareUnit(token);
+    setState(() {
+      _careUnitData = result;
+    });
+    print('CareUnit API result: $_careUnitData');
+
+    // บันทึกและนำทางเฉพาะเมื่อ API ตอบสำเร็จ
+    final success =
+        result != null &&
+        result['message'] == 'success' &&
+        (result['data'] is List) &&
+        (result['data'] as List).isNotEmpty;
+    if (success) {
+      await CareUnitStorage.saveCareUnitData(result);
+      print('บันทึกข้อมูลลง Hive เรียบร้อย');
+      // ตัวอย่างการอ่านข้อมูลแบบ offline (ตรวจสอบ)
+      final offlineData = await CareUnitStorage.loadCareUnitData();
+      print('Offline data: $offlineData');
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('พบข้อมูลและบันทึกเรียบร้อย')),
+      );
+      Navigator.pushNamed(context, '/device');
+    } else {
+      print('ไม่พบข้อมูลสำหรับ code: $token');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ไม่พบข้อมูลสำหรับรหัสที่กรอก')),
+      );
+    }
   }
 
   @override
@@ -105,10 +135,10 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
                     return Column(
                       children: [
                         SvgPicture.asset(
-                        'assets/logo.svg',
-                        width: r.sw(160),
-                        height: r.sw(160),
-                        fit: BoxFit.contain,
+                          'assets/logo.svg',
+                          width: r.sw(160),
+                          height: r.sw(160),
+                          fit: BoxFit.contain,
                         ),
                         SizedBox(height: r.sh(120)),
                       ],

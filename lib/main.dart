@@ -24,9 +24,13 @@ import 'package:smarttelemed_v4/core/doctor/doctor_pending.dart';
 import 'package:smarttelemed_v4/core/appoint/make_appointment_screen.dart';
 import 'package:smarttelemed_v4/core/setting/setting_screen.dart';
 import 'package:smarttelemed_v4/core/doctor/doctor_result_screen.dart';
-import 'package:smarttelemed_v4/core/device/device_connect.dart';
 
-void main() {
+import 'package:smarttelemed_v4/core/device/device_connect.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
   runApp(const MyApp());
 }
 
@@ -62,7 +66,8 @@ class MyApp extends StatelessWidget {
         '/appointtable': (context) => const AppointTableScreen(),
         '/recordNote': (context) => const RecordNoteScreen(),
         '/videocall': (context) => const VideoCallScreen(),
-        '/doctorPending': (context) => const DoctorPendingScreen(), // ใช้สำหรับหน้ารอแพทย์
+        '/doctorPending': (context) =>
+            const DoctorPendingScreen(), // ใช้สำหรับหน้ารอแพทย์
         '/makeAppointment': (context) => const MakeAppointmentScreen(),
         '/settings': (context) => const SettingScreen(),
         '/doctorResult': (context) => const DoctorResultScreen(),
