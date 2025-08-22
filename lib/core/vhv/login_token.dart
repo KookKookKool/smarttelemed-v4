@@ -38,29 +38,62 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
     });
     print('CareUnit API result: $_careUnitData');
 
-    // บันทึกและนำทางเฉพาะเมื่อ API ตอบสำเร็จ
-    final success =
-        result != null &&
-        result['message'] == 'success' &&
-        (result['data'] is List) &&
-        (result['data'] as List).isNotEmpty;
-    if (success) {
-      await CareUnitStorage.saveCareUnitData(result);
-      print('บันทึกข้อมูลลง Hive เรียบร้อย');
-      // ตัวอย่างการอ่านข้อมูลแบบ offline (ตรวจสอบ)
+    if (result == null) {
+      // ไม่มีการตอบกลับจาก API (network error)
+      print('Network error - no response from API');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('เกิดข้อผิดพลาดในการเชื่อมต่อ'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // บันทึกข้อมูลลง Hive ทุกกรณีที่มีการตอบกลับ
+    await CareUnitStorage.saveCareUnitData(result);
+    await CareUnitStorage.debugHiveContents(); // Debug ข้อมูลใน Hive
+    
+    final message = result['message'] ?? '';
+    print('API Message: $message');
+
+    if (message == 'success') {
+      // สำเร็จ - ไปหน้าถัดไป
+      print('✅ บันทึกข้อมูล SUCCESS ลง Hive เรียบร้อย');
+      
       final offlineData = await CareUnitStorage.loadCareUnitData();
-      print('Offline data: $offlineData');
+      print('Offline data verification: $offlineData');
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('พบข้อมูลและบันทึกเรียบร้อย')),
+        const SnackBar(
+          content: Text('🎉 พบข้อมูลและบันทึกเรียบร้อย'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
       );
       Navigator.pushNamed(context, '/device');
     } else {
-      print('ไม่พบข้อมูลสำหรับ code: $token');
+      // แสดงข้อความ error แต่ยังบันทึกข้อมูลไว้
+      String errorMessage = 'ไม่พบข้อมูลสำหรับรหัสที่กรอก';
+      
+      if (message == 'not found customer') {
+        errorMessage = '❌ ไม่พบลูกค้าสำหรับรหัส: $token\n(แต่บันทึกข้อมูลไว้แล้ว)';
+      } else if (message == 'not found care unit') {
+        errorMessage = '⚠️ พบลูกค้าแต่ไม่มี Care Unit\n(บันทึกข้อมูลไว้แล้ว)';
+      } else if (message.isNotEmpty) {
+        errorMessage = '📝 เซิร์ฟเวอร์ตอบ: $message\n(บันทึกข้อมูลไว้แล้ว)';
+      }
+      
+      print('⚠️ บันทึกข้อมูล ERROR CASE ลง Hive: $errorMessage');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('ไม่พบข้อมูลสำหรับรหัสที่กรอก')),
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
       );
     }
   }

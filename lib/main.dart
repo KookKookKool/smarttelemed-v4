@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/core/vhv/device_screen.dart';
 import 'package:smarttelemed_v4/core/vhv/login_qrcam.dart';
 import 'package:smarttelemed_v4/core/vhv/login_token.dart';
-import 'package:smarttelemed_v4/core/vhv/device_screen.dart';
+// import 'package:smarttelemed_v4/core/vhv/device_screen.dart';
 import 'package:smarttelemed_v4/core/splash/plus_loader.dart';
 import 'package:smarttelemed_v4/core/auth/auth_screen.dart';
 import 'package:smarttelemed_v4/core/splash/splash_screen.dart';
