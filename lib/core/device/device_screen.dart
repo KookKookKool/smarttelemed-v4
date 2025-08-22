@@ -21,6 +21,8 @@ import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_tem_ft95.da
 import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_bm57.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_bfs710.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_fr400.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_glucose.dart';
+
 
 class DeviceScreen extends StatefulWidget {
   const DeviceScreen({super.key});
@@ -38,7 +40,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
   // ---- GUIDs ที่ใช้จำแนก ----
   static final Guid haChrFff1 = Guid('0000fff1-0000-1000-8000-00805f9b34fb'); // notify
-static final Guid haChrFff2 = Guid('0000fff2-0000-1000-8000-00805f9b34fb'); // write/wwr
+  static final Guid haChrFff2 = Guid('0000fff2-0000-1000-8000-00805f9b34fb'); // write/wwr
   // BP
   static final Guid svcBp      = Guid('00001810-0000-1000-8000-00805f9b34fb');
   static final Guid chrBpMeas  = Guid('00002a35-0000-1000-8000-00805f9b34fb');
@@ -47,8 +49,9 @@ static final Guid haChrFff2 = Guid('0000fff2-0000-1000-8000-00805f9b34fb'); // w
   static final Guid chrTemp    = Guid('00002a1c-0000-1000-8000-00805f9b34fb');
   // Glucose
   static final Guid svcGlucose = Guid('00001808-0000-1000-8000-00805f9b34fb');
-  static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb');
-  static final Guid chrGluRacp = Guid('00002a52-0000-1000-8000-00805f9b34fb');
+  static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb'); // Notify
+  static final Guid chrGluRacp = Guid('00002a52-0000-1000-8000-00805f9b34fb'); // Indicate+Write
+
   // Yuwell-like oximeter
   static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
   static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
@@ -206,11 +209,24 @@ static final Guid haChrFff2 = Guid('0000fff2-0000-1000-8000-00805f9b34fb'); // w
       return _ParserBinding.temp(s);
     }
 
-    // --- Glucose ---
+   // --- Glucose (ต้องมีทั้ง Measurement และ RACP) ---
     if (hasSvc(svcGlucose) && hasChr(svcGlucose, chrGluMeas) && hasChr(svcGlucose, chrGluRacp)) {
-      final s = await YuwellGlucose(device: device).parse(fetchLastOnly: true, syncTime: true);
+      final s = await YuwellGlucose(device: device).parse(
+        fetchLastOnly: true,  // เอาเรคอร์ดล่าสุดก่อน
+        syncTime: true,       // มี Current Time 0x1805 ตามรูป
+        ensureBond: false,    // ไม่บังคับ pair ซ้ำ ๆ
+      );
       return _ParserBinding.map(s);
     }
+    if (hasSvc(svcGlucose) && hasChr(svcGlucose, chrGluMeas)) {
+      final s = await YuwellGlucose(device: device).parse(
+        fetchLastOnly: true,
+        syncTime: false,
+        ensureBond: false,
+      );
+      return _ParserBinding.map(s);
+    }
+
 
     // --- Yuwell oximeter (FFE0/FFE4) ---
     if (hasSvc(svcFfe0) && hasChr(svcFfe0, chrFfe4)) {
@@ -377,6 +393,9 @@ class _DeviceCard extends StatelessWidget {
     final tempTxt = data['temp'] ?? data['temp_c'];
     final weight  = data['weight_kg'];
     final bmi     = data['bmi'];
+    final mgdl = data['mgdl'];
+    final mmol = data['mmol'];
+    final gts  = data['ts'];
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -384,7 +403,16 @@ class _DeviceCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // ... header เหมือนเดิม ...
-
+          if (mgdl != null || mmol != null) ...[
+            const Text('Glucose', style: TextStyle(fontSize: 13, color: Colors.black54)),
+            Text('${mgdl ?? '-'} mg/dL',
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            if (mmol != null) Text('$mmol mmol/L', style: const TextStyle(fontSize: 16)),
+            if (gts  != null) Text('เวลา: $gts',
+                style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            const Divider(),
+          ],
+          
           if (error != null) ...[
             Text('ผิดพลาด: $error', style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 6),
