@@ -37,8 +37,19 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    repositories {
+        flatDir {
+            dirs("libs")
+        }
+    }
 }
 
 flutter {
     source = "../.."
+}
+dependencies {
+    add("implementation", fileTree("libs") {
+        include("*.jar", "*.aar")
+    })
 }
