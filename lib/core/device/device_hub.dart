@@ -413,11 +413,14 @@ class DeviceHub with ChangeNotifier {
       return _ParserBinding.temp(s);
     }
 
-    // Glucose
-    if (hasSvc(svcGlucose) && hasChr(svcGlucose, chrGluMeas) && hasChr(svcGlucose, chrGluRacp)) {
-      final s = await YuwellGlucose(device: device).parse(fetchLastOnly: true, syncTime: true);
-      return _ParserBinding.map(s);
+    if (hasSvc(svcGlucose) &&
+      hasChr(svcGlucose, chrGluMeas) &&
+      hasChr(svcGlucose, chrGluRacp)) {
+    final mgStream = YuwellGlucose(device: device).parse(fetchLastOnly: true); // Stream<String>
+    final mapStream = mgStream.map<Map<String,String>>((mg) => {'mgdl': mg});
+    return _ParserBinding.map(mapStream);
     }
+
 
     // Yuwell oximeter (FFE0/FFE4)
     if (hasSvc(svcFfe0) && hasChr(svcFfe0, chrFfe4)) {
