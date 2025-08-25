@@ -7,7 +7,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:smarttelemed_v4/core/device/vitals.dart';
+import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
 
 // parsers
 import 'package:smarttelemed_v4/core/device/add_device/A&D/ua_651ble.dart';

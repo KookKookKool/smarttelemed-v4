@@ -4,6 +4,9 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_bm57.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_tem_ft95.dart';
+import 'package:intl/intl.dart';
+
+
 
 // ไปหน้าเชื่อมต่อ/หน้าเดี่ยว
 import 'package:smarttelemed_v4/core/device/device_connect.dart';
@@ -25,6 +28,14 @@ class DeviceScreen extends StatefulWidget {
   const DeviceScreen({super.key});
   @override
   State<DeviceScreen> createState() => _DeviceScreenState();
+}
+String _fmtThai(String iso) {
+  try {
+    final dt = DateTime.parse(iso).toLocal();
+    return DateFormat('d MMM yyyy HH:mm', 'th_TH').format(dt);
+  } catch (_) {
+    return iso; // ถ้า parse ไม่ได้ ก็คืนค่าดิบ
+  }
 }
 
 class _DeviceScreenState extends State<DeviceScreen> {
@@ -53,7 +64,6 @@ class _DeviceScreenState extends State<DeviceScreen> {
   static final Guid svcGlucose = Guid('00001808-0000-1000-8000-00805f9b34fb');
   static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb'); // Notify
   static final Guid chrGluRacp = Guid('00002a52-0000-1000-8000-00805f9b34fb'); // Indicate+Write
-
   // Yuwell-like oximeter
   static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
   static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
@@ -216,11 +226,51 @@ class _DeviceScreenState extends State<DeviceScreen> {
     hasChr(svcGlucose, chrGluMeas) &&
     hasChr(svcGlucose, chrGluRacp)) {
 
-      final y  = YuwellGlucose(device: device); // <- ตัวที่คืน Stream<String>
-      final s  = y.parse(fetchLastOnly: true)
-                  .map<Map<String,String>>((mg) => {'mgdl': mg.toString()});
-      return _ParserBinding.map(s);
+  final y = YuwellGlucose(device: device);
+
+  final stream = y.records(fetchLastOnly: true) // ให้เครื่องส่งเฉพาะเรคอร์ดล่าสุด
+      .take(1)                                  // รับ 1 ค่าแล้วหยุด (ไม่วิ่งต่อ)
+      .map<Map<String,String>>((m) {
+        // แปลง type/location เป็นคำอ่านได้ที่นี่ (ตัวอย่างง่าย)
+        String labelType(int v) {
+          switch (v) {
+            case 0x1: return 'Whole blood (capillary)';
+            case 0x2: return 'Plasma (capillary)';
+            case 0x3: return 'Whole blood (venous)';
+            case 0x4: return 'Plasma (venous)';
+            case 0xA: return 'Control solution';
+            default:  return 'Type 0x${v.toRadixString(16)}';
+          }
+        }
+        String labelLoc(int v) {
+          switch (v) {
+            case 0x1: return 'Finger';
+            case 0x2: return 'AST';
+            case 0x3: return 'Earlobe';
+            case 0x4: return 'Control';
+            case 0xF: return 'Unspecified';
+            default:  return 'Loc 0x${v.toRadixString(16)}';
+          }
+        }
+
+        final t  = int.tryParse(m['type'] ?? '') ?? -1;
+        final lc = int.tryParse(m['loc']  ?? '') ?? -1;
+
+        return {
+          'mgdl': m['mgdl'] ?? '-',
+          'mmol': m['mmol'] ?? '-',
+          'seq' : m['seq']  ?? '-',
+          'time': _fmtThai(m['time'] ?? ''),
+          'type': labelType(t),
+          'loc' : labelLoc(lc),
+        };
+        return m; // หรือ map เป็น {'mgdl','mmol','seq','time','type','loc'}
+      });
+
+      return _ParserBinding.map(stream);
     }
+
+
 
 
     // --- Yuwell oximeter (FFE0/FFE4) ---

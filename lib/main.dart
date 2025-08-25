@@ -26,14 +26,16 @@ import 'package:smarttelemed_v4/core/setting/setting_screen.dart';
 import 'package:smarttelemed_v4/core/doctor/doctor_result_screen.dart';
 import 'package:smarttelemed_v4/core/device/device_connect.dart';
 
-import 'package:smarttelemed_v4/core/device/vitals.dart';
-import 'package:smarttelemed_v4/core/device/device_hub.dart';
+import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
+import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Vitals.I.ensure();            // โหลดค่าล่าสุดจาก SharedPreferences
   await DeviceHub.I.ensureStarted();  // เริ่มศูนย์กลาง BLE ตั้งแต่บูต
+  await initializeDateFormatting('th_TH'); 
   runApp(const MyApp());
 }
 

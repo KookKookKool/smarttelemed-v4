@@ -1,9 +1,10 @@
- // lib/core/device/add_device/Yuwell/yuwellglucose_simple.dart
+// lib/core/device/add_device/Yuwell/yuwellglucose_simple.dart
 import 'dart:async';
 import 'dart:math' show pow;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
+import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 class YuwellGlucose {
   final BluetoothDevice device;
@@ -11,29 +12,65 @@ class YuwellGlucose {
 
   static final Guid _svcGlucose = Guid('00001808-0000-1000-8000-00805f9b34fb');
   static final Guid _chrMeas    = Guid('00002A18-0000-1000-8000-00805f9b34fb'); // notify
-  static final Guid _chrRacp    = Guid('00002A52-0000-1000-8000-00805f9b34fb'); // write+ind
+  static final Guid _chrRacp    = Guid('00002A52-0000-1000-8000-00805f9b34fb'); // indicate + write
 
+  // สตรีมเดิม: ส่ง mg/dL (string)
   final _ctrl = StreamController<String>.broadcast();
+  // สตรีมรายละเอียด (ใช้เมื่อเรียก records())
+  StreamController<Map<String, String>>? _recCtrl;
+
   StreamSubscription<List<int>>? _subMeas, _subRacp;
   BluetoothCharacteristic? _cMeas, _cRacp;
 
   Future<void> _ensureConnected() async {
     try { await device.requestMtu(247); } catch (_) {}
-    var st = await device.connectionState.first;
+    final st = await device.connectionState.first;
     if (st != BluetoothConnectionState.connected) {
       await device.connect(autoConnect: false);
-      await device.connectionState
-          .where((s) => s == BluetoothConnectionState.connected)
-          .first;
+      await device.connectionState.where((s) => s == BluetoothConnectionState.connected).first;
     }
   }
 
-  /// เริ่มดึงค่า; ถ้า fetchLastOnly=true จะดึง "เรคอร์ดล่าสุด" จากเครื่อง
+  // ---------- One-shot: เอา "เรคอร์ดล่าสุด" จริง ๆ ----------
+  Future<Map<String,String>> getLatestRecord({Duration timeout = const Duration(seconds: 6)}) async {
+    await _ensureConnected();
+
+    // discover & pick chr
+    if (_cMeas == null || _cRacp == null) {
+      final svcs = await device.discoverServices();
+      final svc = svcs.firstWhere((s) => s.uuid == _svcGlucose, orElse: () => throw 'ไม่พบ 0x1808');
+      for (final c in svc.characteristics) {
+        if (c.uuid == _chrMeas) _cMeas = c;
+        if (c.uuid == _chrRacp) _cRacp = c;
+      }
+      if (_cMeas == null || _cRacp == null) throw 'ไม่พบ 0x2A18/0x2A52';
+    }
+
+    // เปิด notify/indicate
+    try { await _cMeas!.setNotifyValue(true); } catch (_) {}
+    try { await _cRacp!.setNotifyValue(true); } catch (_) {}
+
+    // รอ measurement แรกจาก 2A18 แล้วจบ
+    final fut = _cMeas!.value
+        .map((raw) => _decodeRec(Uint8List.fromList(raw)))
+        .where((rec) => rec != null)
+        .cast<GlucoseRecord>()
+        .map((rec) => rec.toMap())
+        .first
+        .timeout(timeout);
+
+    // ขอ "เรคอร์ดสุดท้าย" ตามสเปค: Report Stored Records (0x01) + Operator Last (0x06)
+    await _writeRacp([0x01, 0x06]);
+
+    return await fut;
+  }
+
+  /// สตรีมตัวเลขเดิม (เพื่อความเข้ากันได้) — ถ้า fetchLastOnly=true จะ "ขอ last" ตรง ๆ
   Stream<String> parse({bool fetchLastOnly = true}) {
-    // รัน async pipeline แล้วคืน stream ออกไปเลย
     () async {
       try {
         await _ensureConnected();
+
         final svcs = await device.discoverServices();
         final svc = svcs.firstWhere(
           (s) => s.uuid == _svcGlucose,
@@ -47,31 +84,39 @@ class YuwellGlucose {
           throw 'ไม่พบ 0x2A18 หรือ 0x2A52';
         }
 
-        // เปิด notify/indicate
         await _cMeas!.setNotifyValue(true);
         _subMeas = _cMeas!.value.listen((raw) {
-          // ถอดแพ็กเก็ต Measurement -> ได้ mmol และ mg/dL อย่างถูกต้อง
-          final mgdl = _decodeMgdl(Uint8List.fromList(raw));
-          if (mgdl != null) {
-            _ctrl.add(mgdl.toStringAsFixed(0)); // ส่งเฉพาะ mg/dL ตามสัญญาเดิม
+          final rec = _decodeRec(Uint8List.fromList(raw));
+          if (rec != null) {
+            _ctrl.add(rec.mgdl.toStringAsFixed(0));
+            _recCtrl?.add(rec.toMap());
+            debugPrint('GLU rec: seq=${rec.seq} time=${rec.time.toIso8601String()} '
+                'mg/dL=${rec.mgdl.toStringAsFixed(0)} mmol=${rec.mmol.toStringAsFixed(1)}');
+          } else {
+            debugPrint('2A18 decode=null raw=${_hex(raw)}');
           }
         }, onError: (e) => debugPrint('glucose meas err: $e'));
 
         await _cRacp!.setNotifyValue(true);
         _subRacp = _cRacp!.value.listen((raw) {
-          debugPrint('RACP: $raw'); // สำหรับดีบัก
-        });
+          debugPrint('RACP ind: ${_hex(raw)}');
+          // ไม่ต้องแปลง count → seq แล้วอีกต่อไป
+          // แค่รับ general responses ไว้ดูสถานะ
+        }, onError: (e) => debugPrint('glucose racp err: $e'));
 
-        // รอ CCCD เซ็ตเสร็จก่อนสั่ง RACP
-        await Future.delayed(const Duration(milliseconds: 300));
-
-        // ขอข้อมูลจากเครื่อง
+        // ----- Kick off -----
+        await Future.delayed(const Duration(milliseconds: 200));
         if (fetchLastOnly) {
-          // ขอเรคอร์ดล่าสุด (0x01, 0x06)
-          await _cRacp!.write([0x01, 0x06], withoutResponse: false);
+          // ✅ ขอ "ล่าสุด" ตรง ๆ
+          await _writeRacp([0x01, 0x06]);
+          // กันเงียบ: ถ้า 2 วิไม่มา ลองขอ "ทั้งหมด" (แล้ว UI กรองเอาค่าแรกที่มาหรือใช้ take(1) ข้างนอก)
+          Future.delayed(const Duration(seconds: 2), () async {
+            if (!_ctrl.hasListener) return;
+            try { await _writeRacp([0x01, 0x01]); } catch (_) {}
+          });
         } else {
-          // ขอทั้งหมด (0x01, 0x01)
-          await _cRacp!.write([0x01, 0x01], withoutResponse: false);
+          // ดึงทั้งหมด
+          await _writeRacp([0x01, 0x01]);
         }
       } catch (e, st) {
         debugPrint('YuwellGlucose error: $e\n$st');
@@ -79,70 +124,135 @@ class YuwellGlucose {
       }
     }();
 
-    // ทำความสะอาดเมื่อยกเลิกฟัง
     _ctrl.onCancel = () async {
       try { await _subMeas?.cancel(); } catch (_) {}
       try { await _subRacp?.cancel(); } catch (_) {}
       try { if (_cMeas != null) await _cMeas!.setNotifyValue(false); } catch (_) {}
       try { if (_cRacp != null) await _cRacp!.setNotifyValue(false); } catch (_) {}
+      if (_recCtrl != null && !_recCtrl!.hasListener) {
+        try { await _recCtrl!.close(); } catch (_) {}
+        _recCtrl = null;
+      }
     };
 
     return _ctrl.stream;
   }
 
-  /// ถอดค่า mg/dL จาก Glucose Measurement (0x2A18) ตามสเปค
-  double? _decodeMgdl(Uint8List data) {
+  /// รายละเอียดครบ (ใช้กับ UI ที่อยากโชว์เวลา/ลำดับ) — ถ้า fetchLastOnly=true แนะนำใช้ .take(1) ที่ฝั่ง UI
+  Stream<Map<String, String>> records({bool fetchLastOnly = true}) {
+    if (_recCtrl != null) {
+      try { _recCtrl!.close(); } catch (_) {}
+      _recCtrl = null;
+    }
+    final rec = _recCtrl = StreamController<Map<String, String>>.broadcast();
+
+    final boot = parse(fetchLastOnly: fetchLastOnly).listen(
+      (_) {}, // ทิ้งตัวเลข
+      onError: (e) => rec.addError(e),
+    );
+
+    rec.onCancel = () async {
+      await boot.cancel();
+      if (_recCtrl == rec) {
+        try { await _recCtrl!.close(); } catch (_) {}
+        _recCtrl = null;
+      }
+    };
+    return rec.stream;
+  }
+
+  // ---------- Helpers ----------
+  Future<void> _writeRacp(List<int> bytes) async {
+    if (_cRacp == null) throw 'RACP not ready';
+    debugPrint('RACP write: ${_hex(bytes)}');
+    await _cRacp!.write(bytes, withoutResponse: false);
+  }
+
+  GlucoseRecord? _decodeRec(Uint8List data) {
     if (data.isEmpty) return null;
     int i = 0;
-    final flags = data[i++];
-
     int _u16(int idx) => data[idx] | (data[idx + 1] << 8);
-    int _i16(int idx) {
-      final v = _u16(idx);
-      return v >= 0x8000 ? v - 0x10000 : v;
+
+    final flags = data[i++];
+    final seq   = _u16(i); i += 2;
+
+    final year   = _u16(i); i += 2;
+    final month  = data[i++];
+    final day    = data[i++];
+    final hour   = data[i++];
+    final minute = data[i++];
+    final second = data[i++];
+    DateTime t = DateTime(year, month, day, hour, minute, second);
+
+    if ((flags & 0x01) != 0) {
+      final off = _u16(i).toSigned(16); i += 2;
+      t = t.add(Duration(minutes: off));
     }
 
-    // ลำดับและเวลา (ไม่ใช้ในเวอร์ชันง่ายนี้ แต่ต้องขยับ index ให้ถูก)
-    final seq = _u16(i); i += 2;
-    final year = _u16(i); i += 2;
-    final month = data[i++], day = data[i++];
-    final hour = data[i++], minute = data[i++], second = data[i++];
+    if ((flags & 0x02) == 0 || data.length < i + 3) return null;
 
-    if ((flags & 0x01) != 0) { // time offset
-      i += 2; // _i16(i)
-    }
+    final sfloatRaw = _u16(i); i += 2;
+    final typeLoc   = data[i++];
 
-    double? mmol, mgdl;
-    if ((flags & 0x02) != 0 && data.length >= i + 3) {
-      final sfloatRaw = data[i] | (data[i + 1] << 8);
-      i += 2;
-      // type/location (skip)
-      i++;
+    final conc = _parseSfloat(sfloatRaw);
+    if (conc == null) return null;
 
-      final conc = _parseSfloat(sfloatRaw);
-      if (conc != null) {
-        final isMolPerL = (flags & 0x04) != 0;
-        // ผู้ผลิตกลูโคสส่วนใหญ่ใช้ mmol/L → mg/dL = *18.015
-        mmol = conc;
-        mgdl = mmol * 18.015;
-        // ถ้ารุ่นนี้ตั้งธงหน่วยไว้ตรงก็ยังได้ค่าเท่ากัน
-        if (!isMolPerL) {
-          // บางรุ่นธงอาจ 0 แต่ค่าก็ยังเป็น mmol/L จริง
-          // ถ้าคุณพบว่าค่าผิด ค่อยสลับสาขานี้เป็น else-if ตามรุ่น
-        }
-      }
-    }
+    final unitsMolPerL = (flags & 0x04) != 0;
+    final mgdl = unitsMolPerL ? conc * 18015.0 : conc * 100000.0;
+    final mmol = mgdl / 18.015;
 
-    return mgdl;
+    final type = typeLoc & 0x0F;
+    final loc  = (typeLoc >> 4) & 0x0F;
+
+    return GlucoseRecord(
+      seq: seq,
+      time: t,
+      mgdl: mgdl,
+      mmol: mmol,
+      flags: flags,
+      type: type,
+      location: loc,
+    );
   }
 
   double? _parseSfloat(int raw) {
-    // ค่าพิเศษ IEEE-11073 (NaN/Inf/NRes) → ข้าม
     if (raw == 0x07FF || raw == 0x07FE || raw == 0x0800) return null;
     int mantissa = raw & 0x0FFF;
     int exponent = (raw >> 12) & 0xF;
     if (mantissa >= 0x800) mantissa -= 0x1000;
-    if (exponent >= 0x8) exponent -= 0x10;
+    if (exponent >= 0x8)  exponent -= 0x10;
     return mantissa * pow(10, exponent).toDouble();
   }
+
+  String _hex(List<int> bytes) =>
+      bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+}
+
+// -------- Data class --------
+class GlucoseRecord {
+  GlucoseRecord({
+    required this.seq,
+    required this.time,
+    required this.mgdl,
+    required this.mmol,
+    required this.flags,
+    this.type,
+    this.location,
+  });
+  final int seq;
+  final DateTime time;
+  final double mgdl;
+  final double mmol;
+  final int flags;
+  final int? type;
+  final int? location;
+
+  Map<String, String> toMap() => {
+    'seq': seq.toString(),
+    'time': time.toIso8601String(),
+    'mgdl': mgdl.toStringAsFixed(0),
+    'mmol': mmol.toStringAsFixed(1),
+    'type': type?.toString() ?? '',
+    'loc': location?.toString() ?? '',
+  };
 }

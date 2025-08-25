@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/core/device/vitals.dart';
+import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
 // เพิ่ม import
 import 'package:flutter/foundation.dart'; // << ใหม่
-import 'package:smarttelemed_v4/core/device/device_hub.dart'; // << ใหม่
+import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart'; // << ใหม่
 
 
 // =============== หน้าแบบ Section (ฝังใน ScrollView อื่น) ===============
