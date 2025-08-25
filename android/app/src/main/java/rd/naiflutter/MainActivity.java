@@ -146,7 +146,7 @@ public class MainActivity extends FlutterActivity {
 
                         Global_result = result;
 
-                        
+
                         if (call.method.equals("getFilesDirMC")) {
 
                             String res = String.valueOf( getFilesDir() );
@@ -179,7 +179,7 @@ public class MainActivity extends FlutterActivity {
                             Message msg = mHandler.obtainMessage();
                             msg.obj = "setpermissions";
                             mHandler.sendMessage(msg);
-                            
+
                         }
 
 
@@ -199,7 +199,7 @@ public class MainActivity extends FlutterActivity {
                         if (call.method.equals("getReaderListMC")) {
 
                             listOption = (int) call.arguments;
-                            System.out.println("listOption "+listOption);
+
                             Message msg = mHandler.obtainMessage();
                             msg.obj = "getreaderlist";
                             mHandler.sendMessage(msg);
@@ -293,7 +293,7 @@ public class MainActivity extends FlutterActivity {
 
 
 
-                    
+
                         if (call.method.equals("updateLicenseFileMC")) {
 
                             Message msg = mHandler.obtainMessage();
@@ -351,7 +351,7 @@ public class MainActivity extends FlutterActivity {
                             mHandler.sendMessage(msg);
 
                         }
-                        
+
 
 
                     }
@@ -393,7 +393,7 @@ public class MainActivity extends FlutterActivity {
 
                     handler.post(new Runnable() {
                         @Override
-                        public void run() { Global_result.success(res); } 
+                        public void run() { Global_result.success(res); }
                     });
 
                     break;
@@ -408,35 +408,35 @@ public class MainActivity extends FlutterActivity {
                     waitResponse();
 
                     handler.post(new Runnable() {
-                            @Override
-                            public void run() { Global_result.success(iRes); }
-                        });
+                        @Override
+                        public void run() { Global_result.success(iRes); }
+                    });
                     break;
-                    
+
                 }
 
                 case "getreaderlist": {
 
                     /* ================= Get Reader List ================= */
-                   bReturnResponseFinish = false;
-                   clearReturnResponse();
+                    bReturnResponseFinish = false;
+                    clearReturnResponse();
 
-                   NALibs.getReaderListNA(listOption);
+                    NALibs.getReaderListNA(listOption);
 
-                   waitResponse();
+                    waitResponse();
 
                     str_result = iRes + ";" ;
 
-                   if (iRes > 0) {
-                       str_result = iRes + ";" + aRes.get(0);
-                   }
+                    if (iRes > 0) {
+                        str_result = iRes + ";" + aRes.get(0);
+                    }
 
-                   handler.post(new Runnable() {
-                       @Override
-                       public void run() { Global_result.success(str_result); }
-                   });
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() { Global_result.success(str_result); }
+                    });
 
-                   break;
+                    break;
 
                 }
 
@@ -461,7 +461,7 @@ public class MainActivity extends FlutterActivity {
                         @Override
                         public void run() { Global_result.success(iRes); }
                     });
-                    
+
                     break;
                 }
 
@@ -491,17 +491,17 @@ public class MainActivity extends FlutterActivity {
                     /* ================= Get Reader ID ================= */
                     final byte[] Rid = new byte[256];
                     int result = NALibs.getRidNA(Rid);
-                   
+
                     String encoded = Base64.getEncoder().encodeToString(Rid);
 
                     if (result > 0) {
 
-                       str_result = result + ";" + encoded;
+                        str_result = result + ";" + encoded;
 
                     } else {
                         str_result = result + ";";
                     }
-                    
+
                     handler.post(new Runnable() {
                         @Override
                         public void run() { Global_result.success( str_result); }
@@ -514,13 +514,13 @@ public class MainActivity extends FlutterActivity {
 
                 case "connectcard": {
 
-                     /* ================= Connect Card ================= */
-                     int res = NALibs.connectCardNA();
+                    /* ================= Connect Card ================= */
+                    int res = NALibs.connectCardNA();
 
-                     handler.post(new Runnable() {
+                    handler.post(new Runnable() {
                         @Override
                         public void run() { Global_result.success(res); }
-                     });
+                    });
 
                     break;
                 }
@@ -532,12 +532,12 @@ public class MainActivity extends FlutterActivity {
 
                     handler.post(new Runnable() {
                         @Override
-                            public void run() { Global_result.success(res); }
+                        public void run() { Global_result.success(res); }
                     });
 
-                   
-                   break;
-               }
+
+                    break;
+                }
 
                 case "gettext": {
 
@@ -552,7 +552,7 @@ public class MainActivity extends FlutterActivity {
                     waitResponse();
 
                     str_result = iRes + ";"+ sRes ;
-
+                    System.out.println(str_result);
                     handler.post(new Runnable() {
                         @Override
                         public void run() { Global_result.success(str_result); }
@@ -578,7 +578,7 @@ public class MainActivity extends FlutterActivity {
 
                         str_result = iRes + ";"+ encoded;
 
-                    } 
+                    }
 
                     handler.post(new Runnable() {
                         @Override
@@ -653,7 +653,7 @@ public class MainActivity extends FlutterActivity {
                     String[] data = new String[1];
 
                     NALibs.getSoftwareInfoNA(data);
-                    
+
                     if (data[0] != null) {
                         handler.post(new Runnable() {
                             @Override
@@ -683,7 +683,7 @@ public class MainActivity extends FlutterActivity {
 
                     /* ================= Deselect Reader ================= */
                     int Result = NALibs.deselectReaderNA();
-                    
+
                     handler.post(new Runnable() {
                         @Override
                         public void run() { Global_result.success(Result); }
@@ -697,7 +697,7 @@ public class MainActivity extends FlutterActivity {
 
                     /*================= Close Lib =================*/
                     int Result = NALibs.closeLibNA();
-                    
+
                     handler.post(new Runnable() {
                         @Override
                         public void run() { Global_result.success(Result); }
@@ -719,7 +719,7 @@ public class MainActivity extends FlutterActivity {
         AssetManager assetManager = getAssets();
         try {
 
-            InputStream is = assetManager.open("rdnidlib.dls"); 
+            InputStream is = assetManager.open("rdnidlib.dls");
 
             File out = new File(Path);
             if (out.exists()) { //check already has License File

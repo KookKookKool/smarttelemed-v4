@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:smarttelemed_v4/core/idcard/idcard_reader.dart';
 import 'package:get/get.dart';
 import 'dart:async';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:flutter/material.dart';
 
 class IdCardInsertScreen extends StatefulWidget {
   const IdCardInsertScreen({Key? key}) : super(key: key);
@@ -26,7 +28,6 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
   @override
   void initState() {
     super.initState();
-    reader = ESMIDCard(); // safe runtime init
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // runs after build()
 
@@ -38,15 +39,26 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
     try {
       Future.delayed(const Duration(seconds: 1), () {
         reader = ESMIDCard.instance;
-        reader.findReader();
+
         entry = reader?.getEntry();
 
         debugPrint('->initstate');
         if (entry != null) {
+          debugPrint('->prepare stream');
+
           entry?.listen(
             (String data) async {
               List<String> splitted = data.split('#');
               debugPrint("IDCard $data");
+
+              Fluttertoast.showToast(
+                msg: "" + data,
+                toastLength: Toast.LENGTH_SHORT, // or Toast.LENGTH_LONG
+                gravity: ToastGravity.BOTTOM, // TOP, CENTER, BOTTOM
+                backgroundColor: Colors.black54,
+                textColor: Colors.white,
+                fontSize: 16.0,
+              );
 
               // context.read<DataProvider>().id = splitted[0].toString();
               // context.read<DataProvider>().regter_data = splitted;
@@ -226,6 +238,47 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                             },
                             child: const Text(
                               'สำเร็จ',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 40),
+                      // ปุ่มสำเร็จ
+                      SizedBox(
+                        width: 114,
+                        height: 41,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: AppColors.mainGradient,
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.gradientStart.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              // Navigator.pushNamed(context, '/idcardloader');
+                              reader?.findReader();
+                            },
+                            child: const Text(
+                              'อ่าน',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.white,
