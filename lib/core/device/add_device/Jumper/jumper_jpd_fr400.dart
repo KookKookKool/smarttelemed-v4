@@ -1,7 +1,5 @@
 // lib/core/device/add_device/Jumper/jumper_jpd_fr400.dart
 import 'dart:async';
-import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
@@ -31,7 +29,7 @@ class JumperFr400 {
 
   Future<void> start() async {
     // ถ้ายังไม่ต่อให้พยายามต่อ
-    if (device.connectionState != BluetoothConnectionState.connected) {
+    if (await device.connectionState.first != BluetoothConnectionState.connected) {
       await device.connect(timeout: const Duration(seconds: 8));
     }
 

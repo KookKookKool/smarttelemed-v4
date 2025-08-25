@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class CareUnitApi {
@@ -8,10 +9,10 @@ class CareUnitApi {
   // ทดสอบส่งแบบง่ายๆ เหมือนหน้าเว็บ
   static Future<Map<String, dynamic>?> fetchCareUnitSimple(String code) async {
     final trimmed = code.trim();
-    print('=== Simple Web-like Request ===');
-    print('URL: $apiUrl');
-    print('Method: POST');
-    print('Body: code=$trimmed');
+    debugPrint('=== Simple Web-like Request ===');
+    debugPrint('URL: $apiUrl');
+    debugPrint('Method: POST');
+    debugPrint('Body: code=$trimmed');
     
     try {
       final response = await http.post(
