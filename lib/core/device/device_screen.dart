@@ -1,28 +1,25 @@
-// lib/core/device/device_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_bp_ye680a.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_bm57.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_tem_ft95.dart';
 
 // ไปหน้าเชื่อมต่อ/หน้าเดี่ยว
 import 'package:smarttelemed_v4/core/device/device_connect.dart';
 import 'package:smarttelemed_v4/core/device/device_page.dart';
 
-// parsers อื่น ๆ
+// parsers
 import 'package:smarttelemed_v4/core/device/add_device/A&D/ua_651ble.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_yhw_6.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_glucose.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_fpo_yx110.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_bp_ye680a.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_po_jpd_500f.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_ha120.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Mi/mibfs_05hm.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_tem_ft95.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_bm57.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_bfs710.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_fr400.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_glucose.dart';
-
+import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_bfs710.dart';
+import 'package:smarttelemed_v4/core/device/add_device/Mi/mibfs_05hm.dart';
 
 class DeviceScreen extends StatefulWidget {
   const DeviceScreen({super.key});
@@ -34,19 +31,24 @@ class _DeviceScreenState extends State<DeviceScreen> {
   final Map<String, _DeviceSession> _sessions = {};
   bool _loading = false;
 
-  // ตัวจับเวลาสำหรับดึงสถานะเชื่อมต่อซ้ำ ๆ
+  // pull รายชื่ออุปกรณ์ที่เชื่อมต่อซ้ำ ๆ
   Timer? _watchTimer;
   bool _refreshing = false;
 
   // ---- GUIDs ที่ใช้จำแนก ----
+  // HA120 (เวนเดอร์ FFF0)
+  static final Guid svcFff0   = Guid('0000fff0-0000-1000-8000-00805f9b34fb');
   static final Guid haChrFff1 = Guid('0000fff1-0000-1000-8000-00805f9b34fb'); // notify
   static final Guid haChrFff2 = Guid('0000fff2-0000-1000-8000-00805f9b34fb'); // write/wwr
-  // BP
+
+  // BP (มาตรฐาน)
   static final Guid svcBp      = Guid('00001810-0000-1000-8000-00805f9b34fb');
   static final Guid chrBpMeas  = Guid('00002a35-0000-1000-8000-00805f9b34fb');
-  // Thermometer
+
+  // Thermometer (มาตรฐาน)
   static final Guid svcThermo  = Guid('00001809-0000-1000-8000-00805f9b34fb');
   static final Guid chrTemp    = Guid('00002a1c-0000-1000-8000-00805f9b34fb');
+
   // Glucose
   static final Guid svcGlucose = Guid('00001808-0000-1000-8000-00805f9b34fb');
   static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb'); // Notify
@@ -55,23 +57,23 @@ class _DeviceScreenState extends State<DeviceScreen> {
   // Yuwell-like oximeter
   static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
   static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
+
   // Body Composition + Xiaomi proprietary
   static final Guid svcBody   = Guid('0000181b-0000-1000-8000-00805f9b34fb');
   static final Guid chrBodyMx = Guid('00002a9c-0000-1000-8000-00805f9b34fb');
-
   static final Guid chr1530   = Guid('00001530-0000-3512-2118-0009af100700');
   static final Guid chr1531   = Guid('00001531-0000-3512-2118-0009af100700');
   static final Guid chr1532   = Guid('00001532-0000-3512-2118-0009af100700');
   static final Guid chr1542   = Guid('00001542-0000-3512-2118-0009af100700');
   static final Guid chr1543   = Guid('00001543-0000-3512-2118-0009af100700');
   static final Guid chr2A2Fv  = Guid('00002a2f-0000-3512-2118-0009af100700');
+
   // Jumper oximeter (ล็อกเฉพาะ chr)
   static final Guid chrCde81  = Guid('cdeacb81-5235-4c07-8846-93a37ee6b86d');
+
   // BFS-710 services
   static final Guid svcFfb0 = Guid('0000ffb0-0000-1000-8000-00805f9b34fb');
   static final Guid svcFee0 = Guid('0000fee0-0000-1000-8000-00805f9b34fb');
-  // Vendor thermometer (Jumper FR400)
-  static final Guid svcFff0  = Guid('0000fff0-0000-1000-8000-00805f9b34fb');
 
   @override
   void initState() {
@@ -174,14 +176,14 @@ class _DeviceScreenState extends State<DeviceScreen> {
 
     final name = device.platformName.toLowerCase();
 
-   // --- HA120 ก่อน ---
+    // --- HA120 (BP เวนเดอร์ FFF0) ---
     if (name.contains('ha120') || name.contains('jpd-ha120') ||
         (hasSvc(svcFff0) && (hasChr(svcFff0, haChrFff1) || hasChr(svcFff0, haChrFff2)))) {
       final s = await JumperJpdHa120(device: device).parse();
       return _ParserBinding.map(s);
     }
 
-    // --- FR400 (ระบุด้วยชื่อเท่านั้น ป้องกันชน FFF0) ---
+    // --- FR400 thermometer (ระบุด้วยชื่อ ป้องกันชน FFF0) ---
     if ((name.contains('fr400') || name.contains('jpd-fr400')) && hasSvc(svcFff0)) {
       final hasStdThermo = hasSvc(svcThermo) && hasChr(svcThermo, chrTemp);
       if (!hasStdThermo) {
@@ -191,39 +193,32 @@ class _DeviceScreenState extends State<DeviceScreen> {
       }
     }
 
-    // --- Jumper oximeter: ล็อกเฉพาะ chrCde81 ---
+    // --- Jumper oximeter: ล็อกเฉพาะ chrCDEACB81 ---
     if (hasAnyChr(chrCde81)) {
       final s = await JumperPoJpd500f(device: device).parse();
       return _ParserBinding.map(s);
     }
 
-    // --- BP ---
+    // --- BP (มาตรฐาน) ---
     if (hasSvc(svcBp) && hasChr(svcBp, chrBpMeas)) {
       final s = await AdUa651Ble(device: device).parse();
       return _ParserBinding.bp(s);
     }
 
-    // --- Thermometer มาตรฐาน ---
+    // --- Thermometer (มาตรฐาน) ---
     if (hasSvc(svcThermo) && hasChr(svcThermo, chrTemp)) {
       final s = await YuwellYhw6(device: device).parse();
       return _ParserBinding.temp(s);
     }
 
-   // --- Glucose (ต้องมีทั้ง Measurement และ RACP) ---
-    if (hasSvc(svcGlucose) && hasChr(svcGlucose, chrGluMeas) && hasChr(svcGlucose, chrGluRacp)) {
-      final s = await YuwellGlucose(device: device).parse(
-        fetchLastOnly: true,  // เอาเรคอร์ดล่าสุดก่อน
-        syncTime: true,       // มี Current Time 0x1805 ตามรูป
-        ensureBond: false,    // ไม่บังคับ pair ซ้ำ ๆ
-      );
-      return _ParserBinding.map(s);
-    }
-    if (hasSvc(svcGlucose) && hasChr(svcGlucose, chrGluMeas)) {
-      final s = await YuwellGlucose(device: device).parse(
-        fetchLastOnly: true,
-        syncTime: false,
-        ensureBond: false,
-      );
+    // --- Glucose (มาตรฐาน) ---
+    if (hasSvc(svcGlucose) &&
+    hasChr(svcGlucose, chrGluMeas) &&
+    hasChr(svcGlucose, chrGluRacp)) {
+
+      final y  = YuwellGlucose(device: device); // <- ตัวที่คืน Stream<String>
+      final s  = y.parse(fetchLastOnly: true)
+                  .map<Map<String,String>>((mg) => {'mgdl': mg.toString()});
       return _ParserBinding.map(s);
     }
 
@@ -234,7 +229,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
       return _ParserBinding.map(s);
     }
 
-    // --- Mi Body Scale ---
+    // --- Mi Body Scale (มาตรฐาน + proprietary) ---
     if (hasSvc(svcBody) ||
         hasChr(svcBody, chrBodyMx) ||
         hasAnyChr(chr1530) || hasAnyChr(chr1531) ||
@@ -244,14 +239,14 @@ class _DeviceScreenState extends State<DeviceScreen> {
       return _ParserBinding.map(s);
     }
 
-    // --- Beurer FT95 ---
+    // --- Beurer FT95 (thermo) ---
     if (name.contains('ft95') && hasSvc(svcThermo) && hasChr(svcThermo, chrTemp)) {
       final beurer = BeurerFt95(device: device);
       await beurer.connect();
       return _ParserBinding.temp(beurer.onTemperature);
     }
 
-    // --- Beurer BM57 ---
+    // --- Beurer BM57 (bp) ---
     if (name.contains('bm57') && hasSvc(svcBp) && hasChr(svcBp, chrBpMeas)) {
       final b = BeurerBm57(device: device);
       await b.start();
@@ -263,25 +258,19 @@ class _DeviceScreenState extends State<DeviceScreen> {
       final bfs = JumperJpdBfs710(device: device, enableLog: false);
       await bfs.start();
 
-      // (12) Yuwell BP YE680A (BP service)
-      // --- Yuwell BP YE680A (เวนเดอร์สตรีม) ---
+      // Yuwell BP YE680A (หากเป็นรุ่นนี้)
       if (name.contains('ye680a') || name.contains('ye680')) {
         final s = await YuwellBpYe680a(device: device).parse();
         return _ParserBinding.map(s);
       }
-      // --- BP มาตรฐาน (GATT 0x1810/0x2a35) ---
+      // BP มาตรฐาน
       if (hasSvc(svcBp) && hasChr(svcBp, chrBpMeas)) {
         final s = await AdUa651Ble(device: device).parse();
         return _ParserBinding.bp(s);
       }
 
-      // stream น้ำหนักสำหรับ UI
       final weightStream = bfs.onWeightKg.map((kg) => {'weight_kg': kg.toStringAsFixed(1)});
-
-      return _ParserBinding.map(
-        weightStream,
-        cleanup: bfs.stop,
-      );
+      return _ParserBinding.map(weightStream, cleanup: bfs.stop);
     }
 
     throw Exception('ยังไม่รองรับอุปกรณ์นี้ (ไม่พบ Service/Characteristic ที่รู้จัก)');
@@ -372,62 +361,110 @@ class _DeviceCard extends StatelessWidget {
     final data  = session.latestData;
     final error = session.error;
 
-    // ===== NEW: ดึงค่า BP =====
-    final String? sys = data['sys'] ?? data['systolic'];
-    final String? dia = data['dia'] ?? data['diastolic'];
-    // pulse รองรับหลายคีย์ รวมถึง 'pul' (Jumper HA120)
-    final String? bpPulse = data['pul'] ?? data['PR'] ?? data['pr'] ?? data['pulse'];
-
-    int? _tryInt(String? s) => s == null ? null : int.tryParse(s.trim());
-    int? _validSpo2(String? s) {
-      final n = _tryInt(s); if (n == null) return null; return (n >= 70 && n <= 100) ? n : null;
-    }
-    int? _validPr(String? s) {
-      final n = _tryInt(s); if (n == null) return null; return (n >= 30 && n <= 250) ? n : null;
-    }
-
-    // เดิม: SpO2/PR (อย่าดึง 'pul' มาคิดเป็น PR ในบล็อกนี้ เพื่อกันสับสนกับ BP)
     final spo2 = _validSpo2(data['spo2'] ?? data['SpO2'] ?? data['SPO2']);
     final pr   = _validPr (data['pr']   ?? data['PR']   ?? data['pulse']);
 
     final tempTxt = data['temp'] ?? data['temp_c'];
     final weight  = data['weight_kg'];
     final bmi     = data['bmi'];
+
     final mgdl = data['mgdl'];
     final mmol = data['mmol'];
-    final gts  = data['ts'];
+
+    final sys = data['sys'] ?? data['systolic'];
+    final dia = data['dia'] ?? data['diastolic'];
+    final bpPulse = data['pul'] ?? data['PR'] ?? data['pr'] ?? data['pulse'];
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // ... header เหมือนเดิม ...
-          if (mgdl != null || mmol != null) ...[
-            const Text('Glucose', style: TextStyle(fontSize: 13, color: Colors.black54)),
-            Text('${mgdl ?? '-'} mg/dL',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            if (mmol != null) Text('$mmol mmol/L', style: const TextStyle(fontSize: 16)),
-            if (gts  != null) Text('เวลา: $gts',
-                style: const TextStyle(fontSize: 13, color: Colors.black54)),
-            const Divider(),
-          ],
-          
+          Row(
+            children: [
+              const Icon(Icons.devices),
+              const SizedBox(width: 8),
+              Expanded(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+              const SizedBox(width: 8),
+              OutlinedButton(onPressed: onOpen, child: const Text('เปิด')),
+              const SizedBox(width: 8),
+              ElevatedButton(onPressed: onDisconnect, child: const Text('ตัดการเชื่อมต่อ')),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('ID: $id', style: const TextStyle(color: Colors.black54)),
+          const Divider(),
+
           if (error != null) ...[
             Text('ผิดพลาด: $error', style: const TextStyle(color: Colors.red)),
             const SizedBox(height: 6),
           ],
+
+              // ===== Glucose (แสดงบนสุดถ้ามี) =====
+     if (mgdl != null || mmol != null) ...[
+        Text('Glucose', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+        Text('${mgdl ?? '-'} mg/dL', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        if (mmol != null) Text('$mmol mmol/L', style: const TextStyle(fontSize: 16)),
+        if (data['seq'] != null || data['ts'] != null)
+          Text(
+            '${data['seq'] != null ? 'seq: ${data['seq']}   ' : ''}'
+            '${data['ts'] != null ? 'เวลา: ${data['ts']}' : ''}',
+            style: const TextStyle(fontSize: 13, color: Colors.black54),
+          ),
+
+        const SizedBox(height: 8),
+        // ปุ่มควบคุมหน้า MEM ให้ตรงกับเครื่อง
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            OutlinedButton.icon(
+              onPressed: session.gluPrev == null ? null : () => session.gluPrev!.call(),
+              icon: const Icon(Icons.chevron_left),
+              label: const Text('ก่อนหน้า'),
+            ),
+            OutlinedButton.icon(
+              onPressed: session.gluNext == null ? null : () => session.gluNext!.call(),
+              icon: const Icon(Icons.chevron_right),
+              label: const Text('ถัดไป'),
+            ),
+            TextButton(
+              onPressed: session.gluLast == null ? null : () => session.gluLast!.call(),
+              child: const Text('ล่าสุด'),
+            ),
+            TextButton(
+              onPressed: session.gluAll == null ? null : () => session.gluAll!.call(),
+              child: const Text('ทั้งหมด'),
+            ),
+            TextButton(
+              onPressed: session.gluCount == null ? null : () => session.gluCount!.call(),
+              child: const Text('นับจำนวน'),
+            ),
+          ],
+        ),
+        if (data['racp_num'] != null || data['seq'] != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'รายการ: ${data['seq'] ?? '-'}'
+              '${data['racp_num'] != null ? ' / ${data['racp_num']}' : ''}',
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ),
+
+        const Divider(),
+      ], 
 
           // ===== Weight =====
           if (weight != null) ...[
             const Text('Weight', style: TextStyle(fontSize: 13, color: Colors.black54)),
             Text('$weight kg', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
             if (bmi != null) Text('BMI: $bmi', style: const TextStyle(fontSize: 16)),
+            const Divider(),
           ],
 
-          // ===== NEW: BP (มี SYS/DIA เมื่อไหร่ โชว์ทันที) =====
-          if (weight == null && sys != null && dia != null) ...[
-            const Divider(),
+          // ===== BP =====
+          if (sys != null && dia != null) ...[
             const Text('Blood Pressure', style: TextStyle(fontSize: 13, color: Colors.black54)),
             Row(
               children: [
@@ -440,40 +477,73 @@ class _DeviceCard extends StatelessWidget {
               const SizedBox(height: 6),
               Text('Pulse: $bpPulse bpm', style: const TextStyle(fontSize: 16)),
             ],
+            const Divider(),
           ],
 
-          // ===== Temp (แสดงเมื่อยังไม่มี BP/Weight) =====
-          if (weight == null && (sys == null || dia == null) && tempTxt != null && tempTxt.isNotEmpty) ...[
-            const Divider(),
+          // ===== Temp =====
+          if (tempTxt != null && tempTxt.isNotEmpty) ...[
             const Text('Temperature', style: TextStyle(fontSize: 13, color: Colors.black54)),
             Text('$tempTxt °C', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            const Divider(),
           ],
 
-          // ===== SpO2/PR (แสดงเมื่อยังไม่มี BP/Weight) =====
-          if (weight == null && (sys == null || dia == null) && (spo2 != null || pr != null)) ...[
-            const Divider(),
+          // ===== SpO2/PR =====
+          if (spo2 != null || pr != null) ...[
             Text('SpO₂: ${spo2?.toString() ?? '-'} %',
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text('Pulse: ${pr?.toString() ?? '-'} bpm', style: const TextStyle(fontSize: 18)),
+            const Divider(),
           ],
 
-          if (weight == null && data.isEmpty) ...[
-            const Divider(),
+          // อื่น ๆ ทั้งหมด (กันซ้ำ)
+          if (data.isNotEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: data.entries
+                  .where((e) => !{
+                        'weight_kg','bmi','impedance_ohm',
+                        'spo2','SpO2','SPO2','pr','PR','pulse',
+                        'temp','temp_c',
+                        'mgdl','mmol','seq','ts','time_offset',
+                        'racp','racp_num','src','raw',
+                        'sys','systolic','dia','diastolic','pul','map',
+                      }.contains(e.key))
+                  .map((e) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 14)),
+                      ))
+                  .toList(),
+            )
+          else
             const Text('ยังไม่มีข้อมูลจากอุปกรณ์'),
-          ],
+
+          // debug fields (ถ้ามี)
+          if (data['racp_num'] != null)
+            Text('บันทึกในเครื่อง: ${data['racp_num']} รายการ', style: const TextStyle(fontSize: 12)),
+          if (data['racp'] != null)
+            Text('RACP: ${data['racp']}', style: const TextStyle(fontSize: 12)),
+          if (data['src'] != null)
+            Text('src: ${data['src']}', style: const TextStyle(fontSize: 12)),
+          if (data['raw'] != null)
+            Text('raw: ${data['raw']}', style: const TextStyle(fontSize: 12)),
         ]),
-      ),
+      ), 
     );
   }
 }
+
 // ===== session ต่ออุปกรณ์ =====
 class _DeviceSession {
+  // ใน class _DeviceSession
+Future<void> Function()? gluPrev, gluNext, gluLast, gluAll, gluCount;
+
   _DeviceSession({
     required this.device,
     required this.onUpdate,
     required this.onError,
     required this.onDisconnected,
+    
   });
 
   final BluetoothDevice device;
@@ -490,10 +560,53 @@ class _DeviceSession {
   Map<String, String> latestData = {};
   String? error;
 
+  Map<String, String> _normalizeData(Map m) {
+    final out = <String, String>{};
+    m.forEach((k, v) {
+      if (v == null) return;
+      if (v is num) {
+        out[k] = v.toString();
+      } else {
+        out[k] = v.toString();
+      }
+    });
+
+    // 2) Normalize ชื่อคีย์ยอดฮิตของ Glucose ให้ตรง UI ปัจจุบัน
+    //    - mgdL -> mgdl
+    //    - mmolL -> mmol
+    //    - timestamp -> ts
+    if (out.containsKey('mgdL')) {
+      out['mgdl'] = out['mgdL']!;
+    }
+    if (out.containsKey('mmolL')) {
+      out['mmol'] = out['mmolL']!;
+    }
+    if (out.containsKey('timestamp')) {
+      out['ts'] = out['timestamp']!;
+    }
+
+    // 3) ถ้าค่าเป็น double แต่อยากให้ดูสวยหน่อย: ปัดทศนิยม
+    //    (กรณีคลาสต้นทางส่งมาเป็น num อยู่แล้ว ขั้นนี้จะไม่ทำอะไรถ้าเป็น string)
+    //    คุณสามารถคอมเมนต์ออกได้หากไม่ต้องการปัด
+    try {
+      if (out['mgdl'] != null) {
+        final v = double.tryParse(out['mgdl']!);
+        if (v != null) out['mgdl'] = v.toStringAsFixed(0);
+      }
+      if (out['mmol'] != null) {
+        final v = double.tryParse(out['mmol']!);
+        if (v != null) out['mmol'] = v.toStringAsFixed(1);
+      }
+    } catch (_) {}
+
+    return out;
+  }
+
   String get title =>
       device.platformName.isNotEmpty ? device.platformName : device.remoteId.str;
 
   Future<void> start({
+    
     required Future<_ParserBinding> Function(
       BluetoothDevice device,
       List<BluetoothService> services,
@@ -530,8 +643,30 @@ class _DeviceSession {
       final binding = await pickParser(device, services);
       _cleanup = binding.cleanup;
 
-      _dataSub = binding.mapStream?.listen((m) {
-        latestData = m;
+        // 🔗 ผูกปุ่มควบคุมกลูโคส (ถ้ามี)
+        gluPrev  = binding.onPrev;
+        gluNext  = binding.onNext;
+        gluLast  = binding.onLast;
+        gluAll   = binding.onAll;
+        gluCount = binding.onCount;
+
+      // _dataSub = binding.mapStream?.listen((m) {
+      //   // ปรับคีย์ให้ตรงกับ UI ปัจจุบัน (mgdl, mmol, ts, …)
+      //   latestData = _normalizeData(m);
+      //   error = null;
+      //   onUpdate();
+      // }, onError: (e) {
+      //   error = '$e';
+      //   onError(e);
+      //   onUpdate();
+      // });
+    _dataSub = binding.mapStream?.listen((m) {
+        // ปรับคีย์ให้ตรงกับ UI (mgdL→mgdl, mmolL→mmol, timestamp→ts ฯลฯ)
+        final nm = _normalizeData(m);
+
+        // ✅ MERGE: เติมค่าที่มาใหม่ทับค่าเดิม ไม่ล้างทั้งก้อน
+        latestData = { ...latestData, ...nm };
+
         error = null;
         onUpdate();
       }, onError: (e) {
@@ -574,11 +709,11 @@ class _DeviceSession {
 
   Future<void> _cleanupBinding() async {
     await _dataSub?.cancel(); _dataSub = null;
-    if (_cleanup != null) {
-      try { await _cleanup!(); } catch (_) {}
-      _cleanup = null;
-    }
+    if (_cleanup != null) { try { await _cleanup!(); } catch (_) {} _cleanup = null; }
+    // 🔥 เคลียร์ callback
+    gluPrev = gluNext = gluLast = gluAll = gluCount = null;
   }
+
 
   Future<void> dispose() async {
     await _cleanupBinding();
@@ -593,6 +728,11 @@ class _ParserBinding {
     this.bpStream,
     this.tempStream,
     this.cleanup,
+    this.onPrev,
+    this.onNext,
+    this.onLast,
+    this.onAll,
+    this.onCount,
   });
 
   final Stream<Map<String, String>>? mapStream;
@@ -600,13 +740,26 @@ class _ParserBinding {
   final Stream<double>? tempStream;
   final Future<void> Function()? cleanup;
 
+  // ปุ่มควบคุมสำหรับ Glucose (อาจเป็น null ถ้า parser ไม่รองรับ)
+  final Future<void> Function()? onPrev, onNext, onLast, onAll, onCount;
+
   static _ParserBinding map(
     Stream<Map<String, String>> s, {
     Future<void> Function()? cleanup,
+    Future<void> Function()? onPrev,
+    Future<void> Function()? onNext,
+    Future<void> Function()? onLast,
+    Future<void> Function()? onAll,
+    Future<void> Function()? onCount,
   }) =>
       _ParserBinding._(
         mapStream: s,
         cleanup: cleanup,
+        onPrev: onPrev,
+        onNext: onNext,
+        onLast: onLast,
+        onAll: onAll,
+        onCount: onCount,
       );
 
   static _ParserBinding bp(

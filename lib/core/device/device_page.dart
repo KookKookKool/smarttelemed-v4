@@ -198,18 +198,16 @@ class _DevicePageState extends State<DevicePage> {
         return;
       }
 
-      // (8) Glucose
-      if (_hasSvc(svcGlucose) && _hasChr(svcGlucose, chrGluMeas) && _hasChr(svcGlucose, chrGluRacp)) {
-        final s = await YuwellGlucose(device: widget.device).parse(fetchLastOnly: true, syncTime: true);
-        _listenMapStream(s);
-        return;
-      }
-      // fallback: มีแค่ Meas
-      if (_hasSvc(svcGlucose) && _hasChr(svcGlucose, chrGluMeas)) {
-        final s = await YuwellGlucose(device: widget.device).parse(fetchLastOnly: true, syncTime: false);
-        _listenMapStream(s);
-        return;
-      }
+      // // (8) Glucose (มาตรฐาน) → ดึง “ประวัติทั้งหมด” ก่อน
+      // // (8) Glucose (มาตรฐาน) → ดึง “ประวัติทั้งหมด” หรือ “ล่าสุด” ตามต้องการ
+      // if (_hasSvc(svcGlucose) &&
+      //     _hasChr(svcGlucose, chrGluMeas) &&
+      //     _hasChr(svcGlucose, chrGluRacp)) {
+      //   final yg = YuwellGlucose(device: widget.device);
+      //   final stream = await yg.parse(fetchLastOnly: false); // false = ขอทั้งหมด / true = เอาเฉพาะล่าสุด
+      //   _listenMapStream(stream);                            // ✅ ใช้ map stream (ไม่ใช่ BP)
+      //   return;                                              // ✅ จบการจำแนกที่นี่
+      // }
 
 
       // (9) Beurer FT95 Thermometer
@@ -378,6 +376,10 @@ class _DevicePageState extends State<DevicePage> {
         ? widget.device.platformName
         : widget.device.remoteId.str;
 
+    // กลูโคส (ถ้ามี)
+    final mgdl = _latestData['mgdl'];
+    final mmol = _latestData['mmol'];
+
     return Scaffold(
       appBar: AppBar(
         title: Text(name),
@@ -414,14 +416,28 @@ class _DevicePageState extends State<DevicePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ✅ แสดงน้ำหนักเด่น ๆ หากเป็น MIBFS
+                    // ===== Glucose (เด่นสุด) =====
+                    if (mgdl != null || mmol != null) ...[
+                      Text('${mgdl ?? '-'} mg/dL',
+                          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800)),
+                      if (mmol != null)
+                        Text('$mmol mmol/L', style: const TextStyle(fontSize: 18)),
+                      Row(children: [
+                        if (_latestData['seq'] != null)
+                          Text('seq: ${_latestData['seq']}   ',
+                              style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                        if (_latestData['ts'] != null)
+                          Text('เวลา: ${_latestData['ts']}',
+                              style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                      ]),
+                      const Divider(),
+                    ],
+
+                    // ===== น้ำหนัก (MiBFS) =====
                     if (_latestData['weight_kg'] != null) ...[
                       Text(
                         '${_latestData['weight_kg']} kg',
-                        style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
-                        ),
+                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 4),
                       if (_latestData['bmi'] != null)
@@ -430,7 +446,7 @@ class _DevicePageState extends State<DevicePage> {
                       const Divider(),
                     ],
 
-                    // ✅ แสดงอุณหภูมิเด่น ๆ หากมี (จาก FR400/FT95/มาตรฐาน)
+                    // ===== อุณหภูมิ =====
                     if (_latestData['temp'] != null) ...[
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -448,7 +464,7 @@ class _DevicePageState extends State<DevicePage> {
                       const Divider(),
                     ],
 
-                    // ถ้าเป็นปลายนิ้ว (SpO2/PR) ก็แสดงแบบสวย ๆ
+                    // ===== SpO2 / PR =====
                     Builder(builder: (_) {
                       final spo2Val = _validSpo2(
                         _latestData['spo2'] ??
@@ -477,22 +493,31 @@ class _DevicePageState extends State<DevicePage> {
                       }
                       return const SizedBox.shrink();
                     }),
-                    // แสดงคีย์อื่น ๆ ทั้งหมด (ยกเว้นที่เราจัดรูปแบบไปแล้ว)
+
+                    // ===== คีย์อื่น ๆ ทั้งหมด (ยกเว้นที่เราจัดรูปแบบไปแล้ว) =====
                     ..._latestData.entries
                         .where((e) => !{
-                              // ชุดที่ไม่ต้องแสดงซ้ำ
+                              // กันซ้ำ
                               'weight_kg','bmi','impedance_ohm',
                               'spo2','SpO2','SPO2',
                               'pr','PR','pulse',
                               'temp','temp_c',
-                              // 👇 กลูโคส + ดีบัก
-                              'mgdl','mmol','seq','ts','racp','racp_num','src','raw',
+                              // กลูโคส + ดีบัก
+                              'mgdl','mmol','seq','ts','time_offset',
+                              'racp','racp_num','src','raw',
                             }.contains(e.key))
                         .map((e) => Padding(
                               padding: const EdgeInsets.symmetric(vertical: 2),
                               child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 14)),
                             )),
-                    // debug fields (ถ้ามี)
+
+                    // ===== debug fields (ถ้ามี) =====
+                    if (_latestData['racp_num'] != null)
+                      Text('บันทึกในเครื่อง: ${_latestData['racp_num']} รายการ',
+                          style: const TextStyle(fontSize: 12)),
+                    if (_latestData['racp'] != null)
+                      Text('RACP: ${_latestData['racp']}',
+                          style: const TextStyle(fontSize: 12)),
                     if (_latestData['src'] != null)
                       Text('src: ${_latestData['src']}', style: const TextStyle(fontSize: 12)),
                     if (_latestData['raw'] != null)
