@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
-
+import 'dart:typed_data';
 
 /// Health Thermometer Service (0x1809)
 /// Temperature Measurement (0x2A1C)
@@ -129,4 +129,40 @@ class YuwellYhw6 {
     if ((exponent & 0x0008) != 0) exponent |= ~0x000F;
     return mantissa * math.pow(10.0, exponent).toDouble();
   }
+  double? _decodeTemp2A1C(Uint8List data) {
+  if (data.isEmpty) return null;
+  int i = 0;
+
+  // Flags (bit0: 0=Celsius, 1=Fahrenheit)
+  final flags = data[i++];
+
+  // IEEE-11073 FLOAT (mantissa 24-bit signed, exponent 8-bit signed)
+  if (data.length < i + 4) return null;
+  final raw = (data[i]) | (data[i+1] << 8) | (data[i+2] << 16) | (data[i+3] << 24);
+  i += 4;
+
+  int mantissa = raw & 0x00FFFFFF;
+  int exponent = (raw >> 24) & 0xFF;
+  if (mantissa >= 0x800000) mantissa -= 0x1000000;
+  if (exponent >= 0x80)     exponent -= 0x100;
+
+  double value = mantissa * _pow10(exponent);
+
+  // แปลง F → C ถ้าจำเป็น
+  final isFahrenheit = (flags & 0x01) != 0;
+  if (isFahrenheit) value = (value - 32.0) * 5.0 / 9.0;
+
+  // (ถ้าจะใช้ timestamp/type เพิ่ม ให้ดู flags bit1/bit2 แล้วอ่านต่อจาก data)
+  return value;
+}
+
+double _pow10(int e) {
+  if (e == 0) return 1.0;
+  final neg = e < 0;
+  int n = e.abs();
+  double p = 1.0;
+  while (n-- > 0) p *= 10.0;
+  return neg ? 1.0 / p : p;
+}
+
 }

@@ -1,9 +1,13 @@
-// 📂 lib/core/device/yuwell_fpo_yx110.dart
+// 📂 lib/core/device/add_device/Yuwell/yuwell_fpo_yx110.dart
+//
+// Yuwell FPO/YX110 — Oximeter เท่านั้น
+// - ปล่อยเฉพาะคีย์: spo2, pr, raw, ts, src
+// - ❌ ไม่ส่ง temp/temp_c/temperature เด็ดขาด
+// - มี dedup เฟรมซ้ำด้วย _lastHex
+
 import 'dart:async';
-import 'dart:collection';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
-
 
 class YuwellFpoYx110 {
   YuwellFpoYx110({required this.device});
@@ -17,22 +21,27 @@ class YuwellFpoYx110 {
   StreamSubscription<List<int>>? _subA;
   StreamSubscription<List<int>>? _subB;
 
+  String? _lastHex;
+  DateTime? _lastEmitAt;
+  bool _disposed = false;
+
+  /// คืน Stream<Map<String,String>> ผ่าน Future (ให้เข้ากับโค้ดที่ `await .parse()`)
   Future<Stream<Map<String, String>>> parse() async {
     await _ensureConnected();
 
     final services = await device.discoverServices();
 
-    // หา service/char แบบยืดหยุ่น (ทั้ง uuid ตรง และลงท้าย)
+    // หา FFE0/FFE4 แบบยืดหยุ่น (เท่ากันเป๊ะ หรือ UUID ลงท้าย)
     BluetoothCharacteristic? target;
     for (final s in services) {
       final su = s.uuid.str.toLowerCase();
-      final isMatchSvc = (s.uuid == _svcFfe0) || su.endsWith('ffe0');
-      if (!isMatchSvc) continue;
+      final matchSvc = (s.uuid == _svcFfe0) || su.endsWith('ffe0');
+      if (!matchSvc) continue;
 
       for (final c in s.characteristics) {
         final cu = c.uuid.str.toLowerCase();
-        final isMatchChr = (c.uuid == _chrFfe4) || cu.endsWith('ffe4');
-        if (isMatchChr) {
+        final matchChr = (c.uuid == _chrFfe4) || cu.endsWith('ffe4');
+        if (matchChr) {
           target = c;
           break;
         }
@@ -44,22 +53,19 @@ class YuwellFpoYx110 {
       throw Exception('ไม่พบ FFE0/FFE4 (Yuwell oximeter) ใน services ของอุปกรณ์นี้');
     }
 
-    // เปิด notify
+    // เปิด notify (บางรุ่นจะไม่มี flag → try/catch ไว้)
     try {
       await target.setNotifyValue(true);
-    } catch (e) {
-      // บางรุ่นจะ error ถ้าไม่มี notify/indicate flag — ให้แค่ log แล้วไปต่อ
-      // debugPrint('setNotifyValue error: $e');
-    }
+    } catch (_) {}
 
-    // สมัครสองสตรีม (เวอร์ชัน lib บางตัวให้ค่าจาก onValueReceived เร็วกว่าหรืออย่างเดียว)
+    // สมัครสองสตรีม (รองรับพฤติกรรม lib ต่างเวอร์ชัน)
     await _subA?.cancel();
     await _subB?.cancel();
 
-    _subA = target.onValueReceived.listen(_onFrame, onError: (e) {});
-    _subB = target.lastValueStream.listen(_onFrame, onError: (e) {});
+    _subA = target.onValueReceived.listen(_onFrame, onError: (_) {});
+    _subB = target.lastValueStream.listen(_onFrame, onError: (_) {});
 
-    // wake up (บางรุ่นต้อง read หนแรก)
+    // Wake up: บางรุ่นต้อง read หนึ่งครั้ง
     try {
       await target.read();
     } catch (_) {}
@@ -68,39 +74,55 @@ class YuwellFpoYx110 {
   }
 
   void _onFrame(List<int> values) {
-    if (values.isEmpty) return;
+    if (_disposed || values.isEmpty) return;
 
-    // print raw hex ช่วยดีบัก
-    // print('YX110 raw: ${_hex(values)}');
+    // dedup เฟรมซ้ำถี่ ๆ
+    final hex = _hex(values);
+    final now = DateTime.now();
+    if (_lastHex == hex && _lastEmitAt != null) {
+      final dt = now.difference(_lastEmitAt!);
+      if (dt.inMilliseconds < 250) return; // ข้ามเฟรมซ้ำในช่วงสั้น ๆ
+    }
 
-    final out = _parseYuwell(values);
-    if (out != null) {
+    final parsed = _parseYuwell(values);
+    if (parsed != null) {
+      _lastHex = hex;
+      _lastEmitAt = now;
+
+      // ✅ ปล่อยเฉพาะ spo2/pr เท่านั้น (ห้ามหลุด temp/temp_c/temperature)
+      final out = <String, String>{};
+      if (parsed['spo2'] != null) out['spo2'] = parsed['spo2']!;
+      if (parsed['pr'] != null) out['pr'] = parsed['pr']!;
+
+      // ถ้าพาร์สได้ไม่ครบ (เช่นได้อย่างใดอย่างหนึ่ง) ให้ข้าม เพื่อกัน UI แสดงค่าเพี้ยน
+      if (out.length < 2) return;
+
+      // เมทาดาต้า
+      out['src'] = 'yx110';
+      out['ts']  = now.toIso8601String();
+      out['raw'] = hex;
+
       _controller.add(out);
     }
   }
 
-  /// พาร์สสองรูปแบบ:
-  /// A) รูปแบบที่พบมากใน Yuwell: PR=values[4], SpO2=values[5]
-  /// B) fallback: หา SpO2 (70..100) และ PR (30..250) แบบเดาอย่างปลอดภัย
+  /// พาร์ส 2 แบบ:
+  /// A) รูปแบบที่เจอบ่อยของ Yuwell: PR = v[4], SpO2 = v[5]
+  /// B) Fallback: เดาค่าที่มีช่วงสมเหตุสมผล (SpO2: 70..100, PR: 30..250)
   Map<String, String>? _parseYuwell(List<int> v) {
-    // รูปแบบ A (เดิมของคุณ)
+    // --- รูปแบบ A ---
     if (v.length > 5) {
       final pr = v[4];
       final spo2 = v[5];
       if (_validPr(pr) && _validSpo2(spo2)) {
-        return {
-          'spo2': spo2.toString(),
-          'pr': pr.toString(),
-          'raw': _hex(v),
-          'ts': DateTime.now().toIso8601String(),
-        };
+        return {'spo2': '$spo2', 'pr': '$pr'};
       }
     }
 
-    // รูปแบบ B (fallback เดา)
-    int? pr, spo2;
+    // --- รูปแบบ B (fallback) ---
+    int? spo2, pr;
 
-    // เดา SpO2: หา value 70..100 ที่ใกล้ index 5 ก่อน
+    // หา SpO2 ที่ index ใกล้ ๆ 5 ก่อน
     for (final idx in [5, 4, 6, 3, 7, 2, 8, 1, 9, 0]) {
       if (idx < v.length && _validSpo2(v[idx])) {
         spo2 = v[idx];
@@ -108,14 +130,15 @@ class YuwellFpoYx110 {
       }
     }
 
-    // เดา PR: หา 30..250 (8-bit หรือคู่ bytes แบบ 16-bit เล็ก)
+    // หา PR แบบ 8-bit ก่อน
     for (final idx in [4, 3, 5, 2, 6, 1, 7, 0]) {
       if (idx < v.length && _validPr(v[idx])) {
         pr = v[idx];
         break;
       }
     }
-    // ลองอ่านเป็น 16-bit LE ด้วย ถ้าค่า 8-bit ไม่เข้าเกณฑ์
+
+    // ถ้า 8-bit ไม่เข้าเกณฑ์ ลองอ่านแบบ 16-bit little-endian
     if (pr == null && v.length >= 3) {
       for (int i = 1; i + 1 < v.length; i++) {
         final x = v[i] | (v[i + 1] << 8);
@@ -127,10 +150,10 @@ class YuwellFpoYx110 {
     }
 
     if (spo2 != null && pr != null) {
-      return {'pr': '$pr', 'spo2': '$spo2', 'raw': _hex(v)};
+      return {'spo2': '$spo2', 'pr': '$pr'};
     }
 
-    // ถ้ายังตีไม่ได้ ก็ไม่ส่ง เพื่อไม่ให้ UI ขึ้นค่าผิด
+    // ตีความไม่ได้ → ไม่ส่ง (กัน UI แสดงค่าผิด)
     return null;
   }
 
@@ -141,8 +164,9 @@ class YuwellFpoYx110 {
       bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
 
   Future<void> dispose() async {
-    await _subA?.cancel();
-    await _subB?.cancel();
+    _disposed = true;
+    try { await _subA?.cancel(); } catch (_) {}
+    try { await _subB?.cancel(); } catch (_) {}
     await _controller.close();
   }
 

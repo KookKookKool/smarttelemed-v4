@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/core/vhv/device_screen.dart';
 import 'package:smarttelemed_v4/core/vhv/login_qrcam.dart';
 import 'package:smarttelemed_v4/core/vhv/login_token.dart';
-import 'package:smarttelemed_v4/core/vhv/device_screen.dart';
 import 'package:smarttelemed_v4/core/splash/plus_loader.dart';
 import 'package:smarttelemed_v4/core/auth/auth_screen.dart';
 import 'package:smarttelemed_v4/core/splash/splash_screen.dart';
@@ -22,13 +21,15 @@ import 'package:smarttelemed_v4/core/notes/record_note_screen.dart';
 import 'package:smarttelemed_v4/core/video/videocall_screen.dart';
 import 'package:smarttelemed_v4/core/doctor/doctor_pending.dart';
 import 'package:smarttelemed_v4/core/appoint/make_appointment_screen.dart';
-import 'package:smarttelemed_v4/core/setting/setting_screen.dart';
+import 'package:smarttelemed_v4/core/settings/settings_screen.dart';
 import 'package:smarttelemed_v4/core/doctor/doctor_result_screen.dart';
-import 'package:smarttelemed_v4/core/device/device_connect.dart';
+import 'package:smarttelemed_v4/core/device/connect/device_connect.dart';
 
 import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
 import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
 import 'package:intl/date_symbol_data_local.dart';
+
+import 'package:smarttelemed_v4/core/device/connect/device_settings.dart';
 
 
 void main() async {
@@ -57,6 +58,7 @@ class MyApp extends StatelessWidget {
         '/loginToken': (context) => const LoginTokenPage(),
         '/loginQRCam': (context) => const LoginQrCamPage(),
         '/device': (context) => const DeviceScreen(),
+        '/idcardlogscreen': (context) => const IdCardLoginScreen(),
         '/idcardlog': (context) => const IdCardLoginScreen(),
         '/idcardinsert': (context) => const IdCardInsertScreen(),
         '/idcardloader': (context) => const IdCardLoader(),
@@ -76,6 +78,7 @@ class MyApp extends StatelessWidget {
         '/settings': (context) => const SettingScreen(),
         '/doctorResult': (context) => const DoctorResultScreen(),
         '/deviceConnect': (context) => const DeviceConnectPage(),
+        '/devicesetting': (context) => const DeviceSettingPage(),
         // เพิ่ม routes อื่นๆ ตามต้องการ
       },
     );
