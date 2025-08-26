@@ -23,7 +23,7 @@ class SettingScreen extends StatelessWidget {
         elevation: 0,
         backgroundColor: Colors.transparent,
         title: const Text(
-          'Setting',
+          'Settings',
           style: TextStyle(
             color: Color(0xFF111827),
             fontWeight: FontWeight.w800,
@@ -56,7 +56,7 @@ class SettingScreen extends StatelessWidget {
                     leading: const Icon(Icons.link_rounded, color: iconColor),
                     title: 'เชื่อมต่ออุปกรณ์',
                     trailing: arrow,
-                    onTap: () => Navigator.pushNamed(context, '/deviceConnect'),
+                    onTap: () => Navigator.pushNamed(context, '/devicesetting'),//(context, '/deviceConnect'),
                   ),
                   divider,
                   _Tile(

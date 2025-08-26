@@ -1,14 +1,24 @@
+// lib/core/vital_signs/vital_sign_screen.dart
 import 'package:flutter/material.dart';
+import 'package:smarttelemed_v4/core/vitalsign/widgets/menu_section.dart';
 import 'package:smarttelemed_v4/style/background.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
-import 'package:smarttelemed_v4/core/device/device_dashboard.dart';
-import 'package:smarttelemed_v4/core/device/widgets/connected_devices_section.dart';
-// import 'widgets/vital_sign_cards.dart';
-import 'widgets/menu_section.dart';
-// import 'widgets/device_list.dart';
+// import 'package:smarttelemed_v4/widget/manubar.dart';
+
+// ค่าจาก vitals ที่คุณมีอยู่เดิม
+import 'package:smarttelemed_v4/core/device/dashboard/device_dashboard.dart';
+
+// // ✅ ส่วนแสดงรายการอุปกรณ์แบบฝัง (ใช้โมดูลสั้น ๆ)
+// import 'package:smarttelemed_v4/core/device/widgets/connected_devices_section.dart';
+
+// ✅ หน้าอุปกรณ์เต็มหน้า (แก้ path ให้ตรงกับไฟล์ที่คุณใช้อยู่)
+import 'package:smarttelemed_v4/core/device/dashboard/devices_inline_section.dart';
+
+import 'package:smarttelemed_v4/core/vitalsign/widgets/submit_vitals_button.dart';
 
 class VitalSignScreen extends StatelessWidget {
   const VitalSignScreen({Key? key}) : super(key: key);
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -20,61 +30,83 @@ class VitalSignScreen extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Custom AppBar
+                // ── AppBar แบบกำหนดเอง ───────────────────────────────
                 Padding(
                   padding: const EdgeInsets.only(
-                    top: 24,
-                    left: 16,
-                    right: 16,
-                    bottom: 8,
+                    top: 24, left: 16, right: 16, bottom: 8,
                   ),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back_ios,
-                          color: Colors.black87,
-                        ),
+                        icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
                         onPressed: () => Navigator.pop(context),
                       ),
                       const SizedBox(width: 8),
                       const Text(
                         'ตรวจ',
                         style: TextStyle(
-                          color: Colors.black87,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                          color: Colors.black87, fontSize: 20, fontWeight: FontWeight.bold,
                         ),
                       ),
+                      const Spacer(),
+                      // ปุ่มไปหน้าอุปกรณ์แบบเต็มหน้า
+                      // TextButton.icon(
+                      //   onPressed: () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(builder: (_) => const DeviceScreen()),
+                      //     );
+                      //   },
+                      //   icon: const Icon(Icons.devices),
+                      //   label: const Text('ดูอุปกรณ์ทั้งหมด'),
+                      // ),
                     ],
                   ),
                 ),
-                // Main Content
+
+                // ── เนื้อหาหลัก ───────────────────────────────────────
                 const Expanded(
                   child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Vital Sign Cards Section
-                        // VitalSignCards(),
+                        // ค่าสัญญาณชีพ (แดชบอร์ด)
                         DeviceDashboardSection(),
                         SizedBox(height: 16),
+                        SubmitVitalsButton(
+                          height: 41,
+                          minWidth: 80,
+                          maxWidth: 114,
+                          fontSize: 16,
+                        ),   // <<<<<< ปุ่มส่งไป EMR
+                        SizedBox(height: 24),
 
-                        // Menu Section
+                        // เมนูเดิมของคุณ
                         MenuSection(),
                         SizedBox(height: 16),
 
-                        // Device List Section
-                        ConnectedDevicesSection(),
-                        SizedBox(height: 80), // Bottom padding for navigation
+                        // ✅ แสดง “อุปกรณ์ที่เชื่อมต่ออยู่” แบบฝังหน้า (สั้น/เข้าใจง่าย)
+                        //    - จะแสดงเมื่อเชื่อมต่อและมีค่าเข้ามา (ตามที่ widget นี้จัดการ)
+                        //    - เก็บค่าและค้างการ์ดตาม logic ภายในโมดูล
+                        
+                        DevicesInlineSection(
+                          title: 'Devices',
+                          showHeader: true,
+                          showSpinner: true,
+                        ),
+                        SizedBox(height: 16), // เผื่อพื้นที่ใต้สุดสำหรับปุ่มนำทาง
                       ],
                     ),
                   ),
                 ),
               ],
             ),
-            // Use shared Manubar widget for bottom navigation
-            Positioned(left: 0, right: 0, bottom: 0, child: Manubar()),
+
+            // ── Bottom Navigation ที่แชร์ใช้ ──────────────────────────
+            // const Positioned(
+            //   left: 0, right: 0, bottom: 0,
+            //   child: Manubar(),
+            // ),
           ],
         ),
       ),

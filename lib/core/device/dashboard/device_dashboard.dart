@@ -1,3 +1,4 @@
+//device_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
 // เพิ่ม import
@@ -319,9 +320,6 @@ class _DeviceDashboardSectionState extends State<DeviceDashboardSection> {
       onClear: onClear,
     );
   }
-
-  // CHANGED: ยกเลิกระบบล็อกทั้งหมด
-  bool _isLocked(String title) => false;
 
   Future<void> _showEditSheet(BuildContext context, {
     required String title, required List<Widget> fields, required bool locked,

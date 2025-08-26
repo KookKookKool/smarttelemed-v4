@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
+
 import 'package:smarttelemed_v4/widget/chang_appoint.dart';
 
 class AppointTableScreen extends StatefulWidget {
@@ -201,7 +201,6 @@ class _AppointTableScreenState extends State<AppointTableScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: const Manubar(currentIndex: 0),
       ),
     );
   }
