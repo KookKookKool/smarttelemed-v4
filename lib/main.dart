@@ -54,6 +54,10 @@ class MyApp extends StatelessWidget {
       routes: {
         '/splash': (context) => const SplashScreen(),
         '/auth': (context) => const AuthScreen(),
+        '/general': (context) =>
+            const DashboardScreen(), // General users go to dashboard
+        '/hospital': (context) =>
+            const DashboardScreen(), // Hospital users go to dashboard
         '/loginToken': (context) => const LoginTokenPage(),
         '/loginQRCam': (context) => const LoginQrCamPage(),
         '/device': (context) => const DeviceScreen(),

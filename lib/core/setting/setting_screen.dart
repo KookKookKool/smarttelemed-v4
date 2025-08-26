@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/widget/manubar.dart';
 import 'package:smarttelemed_v4/storage/api_data_view_screen.dart';
+import 'package:smarttelemed_v4/storage/storage.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({Key? key}) : super(key: key);
@@ -116,8 +117,24 @@ class SettingScreen extends StatelessWidget {
                         ),
                       );
                       if (ok == true) {
-                        _snack(context, 'ออกจากระบบแล้ว');
-                        // TODO: ล้าง session และนำทางไปหน้าเข้าสู่ระบบ
+                        // Clear all session data
+                        await SessionStorage.clearAllData();
+
+                        if (context.mounted) {
+                          // Navigate to auth screen and clear all routes
+                          Navigator.of(context).pushNamedAndRemoveUntil(
+                            '/auth', // Navigate to auth screen
+                            (route) => false,
+                          );
+
+                          // Show success message
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('ออกจากระบบเรียบร้อยแล้ว'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
                       }
                     },
                   ),

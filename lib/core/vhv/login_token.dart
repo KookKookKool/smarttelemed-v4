@@ -3,8 +3,8 @@ import 'package:smarttelemed_v4/style/app_colors.dart';
 import 'package:smarttelemed_v4/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'login_qrcam.dart';
-import 'package:smarttelemed_v4/api/care_unit_api.dart';
-import 'package:smarttelemed_v4/storage/care_unit_storage.dart';
+import 'package:smarttelemed_v4/api/backend_api.dart';
+import 'package:smarttelemed_v4/storage/storage.dart';
 
 class LoginTokenPage extends StatefulWidget {
   const LoginTokenPage({Key? key}) : super(key: key);
@@ -54,14 +54,14 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
     // บันทึกข้อมูลลง Hive ทุกกรณีที่มีการตอบกลับ
     await CareUnitStorage.saveCareUnitData(result);
     await CareUnitStorage.debugHiveContents(); // Debug ข้อมูลใน Hive
-    
+
     final message = result['message'] ?? '';
     print('API Message: $message');
 
     if (message == 'success') {
       // สำเร็จ - ไปหน้าถัดไป
       print('✅ บันทึกข้อมูล SUCCESS ลง Hive เรียบร้อย');
-      
+
       final offlineData = await CareUnitStorage.loadCareUnitData();
       print('Offline data verification: $offlineData');
 
@@ -77,15 +77,16 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
     } else {
       // แสดงข้อความ error แต่ยังบันทึกข้อมูลไว้
       String errorMessage = 'ไม่พบข้อมูลสำหรับรหัสที่กรอก';
-      
+
       if (message == 'not found customer') {
-        errorMessage = '❌ ไม่พบลูกค้าสำหรับรหัส: $token\n(แต่บันทึกข้อมูลไว้แล้ว)';
+        errorMessage =
+            '❌ ไม่พบลูกค้าสำหรับรหัส: $token\n(แต่บันทึกข้อมูลไว้แล้ว)';
       } else if (message == 'not found care unit') {
         errorMessage = '⚠️ พบลูกค้าแต่ไม่มี Care Unit\n(บันทึกข้อมูลไว้แล้ว)';
       } else if (message.isNotEmpty) {
         errorMessage = '📝 เซิร์ฟเวอร์ตอบ: $message\n(บันทึกข้อมูลไว้แล้ว)';
       }
-      
+
       print('⚠️ บันทึกข้อมูล ERROR CASE ลง Hive: $errorMessage');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

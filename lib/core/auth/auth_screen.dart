@@ -1,13 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-
+import 'package:smarttelemed_v4/storage/storage.dart';
 
 class AuthScreen extends StatelessWidget {
   const AuthScreen({Key? key}) : super(key: key);
 
-  void _navigateTo(BuildContext context, String routeName) {
-    Navigator.of(context).pushNamed(routeName);
+  void _navigateTo(BuildContext context, String routeName) async {
+    // Save session based on the route
+    String userType;
+    switch (routeName) {
+      case '/general':
+        userType = 'general';
+        break;
+      case '/loginToken':
+        userType = 'volunteer';
+        break;
+      case '/hospital':
+        userType = 'hospital';
+        break;
+      default:
+        userType = 'unknown';
+    }
+
+    // Save session data
+    await SessionStorage.saveSession(userType: userType);
+
+    if (context.mounted) {
+      Navigator.of(context).pushNamed(routeName);
+    }
   }
 
   @override

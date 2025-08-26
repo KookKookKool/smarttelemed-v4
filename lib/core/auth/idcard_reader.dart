@@ -2,9 +2,6 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 
-import 'dart:async';
-import 'dart:developer';
-
 import 'dart:convert';
 import 'dart:io';
 import 'dart:io' as IO;
@@ -82,14 +79,14 @@ class ESMIDCard {
 
   StreamController<String> entry = StreamController<String>();
 
-//  _currentEntries.listen((listOfStrings) {
-//     // From this point you can use listOfStrings as List<String> object
-//     // and do all other business logic you want
+  //  _currentEntries.listen((listOfStrings) {
+  //     // From this point you can use listOfStrings as List<String> object
+  //     // and do all other business logic you want
 
-//     for (String myString in listOfStrings) {
-//       print(myString);
-//     }
-//  });
+  //     for (String myString in listOfStrings) {
+  //       print(myString);
+  //     }
+  //  });
 
   Future<void> methodHandler(MethodCall call) async {
     final String idea = call.arguments;
@@ -119,11 +116,23 @@ class ESMIDCard {
   }
 
   void readAuto() async {
-    print("call check");
-    if(isEnabled && isReaderConnected){
-      autoReadProcess();
-    }else{
-      // findReader();
+    print(
+      "call readAuto - isEnabled: $isEnabled, isReaderConnected: $isReaderConnected",
+    );
+    if (isEnabled && isReaderConnected) {
+      print("calling buttonRead() for full read process");
+      buttonRead(); // Call the full read process instead of autoReadProcess
+    } else {
+      print("Reader not ready - trying to reconnect...");
+      // Try to reconnect reader
+      if (!isReaderConnected) {
+        print("🔄 Attempting reader reconnection...");
+        try {
+          await findReader();
+        } catch (e) {
+          print("❌ Reconnection failed: $e");
+        }
+      }
     }
   }
 
@@ -149,8 +158,10 @@ class ESMIDCard {
     // setState(() {
     isEnabled = true;
     // });
-    print("call findReader");
-    findReader();
+    print(
+      "✅ Android initialization complete - ready for manual findReader call",
+    );
+    // Don't auto-call findReader - wait for user action
   }
 
   ///////////////////////////////// Response from native /////////////////////////////////
@@ -170,9 +181,11 @@ class ESMIDCard {
   //////////////////////////////// Get File Directory ////////////////////////////////
   Future<void> getFilesDirDF() async {
     try {
-      String sFilesDirectory = await platform
-          .invokeMethod('getFilesDirMC'); // Call native method getFilesDirMC
-      rootFolder = sFilesDirectory +
+      String sFilesDirectory = await platform.invokeMethod(
+        'getFilesDirMC',
+      ); // Call native method getFilesDirMC
+      rootFolder =
+          sFilesDirectory +
           folder; // you can change path of license files at here
       sLicFile = rootFolder + sLICFileName;
       parameterOpenLib = sLicFile;
@@ -188,9 +201,12 @@ class ESMIDCard {
   Future<void> setAppLogo() async {
     try {
       ByteData data = await rootBundle.load(
-          'assets/flutter_logo.png'); // you can set assets path at pubspec.yaml
-      bytesAppPhoto =
-          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+        'assets/flutter_logo.png',
+      ); // you can set assets path at pubspec.yaml
+      bytesAppPhoto = data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
 
       // setState(() {
       bytesPhoto = bytesAppPhoto;
@@ -209,8 +225,9 @@ class ESMIDCard {
   //////////////////////////////// Set Listener ////////////////////////////////
   Future<bool> setListenerDF() async {
     try {
-      int returnCode = await platform
-          .invokeMethod('setListenerMC'); // Call native method setListenerMC
+      int returnCode = await platform.invokeMethod(
+        'setListenerMC',
+      ); // Call native method setListenerMC
       if (returnCode == NA_SUCCESS) {
         return true;
       } else {
@@ -232,22 +249,8 @@ class ESMIDCard {
   void requestPermission() async {
     // var androidInfo = await DeviceInfoPlugin().androidInfo;
     // var sdkInt = androidInfo.version.sdkInt;
-    var sdkInt = 31;
-
-    // if (sdkInt >= 31) {
-    //   await Permission.bluetoothScan.request();
-    //   await Permission.bluetoothConnect.request();
-    // } else {
-    //   await Permission.location.request();
-
-    //   if (await Permission.location.isDenied) {
-    //     textResult = textResult + "\n\n" + '-32 Location permission error.';
-    //   }
-    // }
-
-    // setState(() {
-    textResult = textResult;
-    // });
+    // Permissions are now handled in the UI layer
+    print('📋 Permissions handled by UI layer');
   }
 
   //////////////////////////////// Write File Function ////////////////////////////////
@@ -255,7 +258,9 @@ class ESMIDCard {
     String text = "";
     try {
       int returnCode = await platform.invokeMethod(
-          'writeLicFileMC', sLicFile); // Call native method writeLicFileMC
+        'writeLicFileMC',
+        sLicFile,
+      ); // Call native method writeLicFileMC
 
       if (returnCode == 1) {
         text = "License file is already has been.";
@@ -287,7 +292,9 @@ class ESMIDCard {
     try {
       int pms = 1;
       int returnCode = await platform.invokeMethod(
-          'setPermissionsMC', pms); // Call native method setPermissionsMC
+        'setPermissionsMC',
+        pms,
+      ); // Call native method setPermissionsMC
       if (returnCode < 0) {
         // setState(() {
         textResult = checkException(returnCode);
@@ -309,7 +316,9 @@ class ESMIDCard {
     String text = "";
     try {
       int returnCode = await platform.invokeMethod(
-          'openLibMC', parameterOpenLib); // Call native method openLibMC
+        'openLibMC',
+        parameterOpenLib,
+      ); // Call native method openLibMC
       if (returnCode == 0) {
         text = text + "\n" + "Opened the library successfully.";
         // setState(() {
@@ -340,13 +349,18 @@ class ESMIDCard {
     var result;
 
     try {
+      print("🔧 Starting getReaderListDF...");
+
       if (IO.Platform.isAndroid) {
-        int listOption = NA_POPUP +
+        int listOption =
             NA_SCAN +
             NA_BLE1 +
             NA_BLE0 +
             NA_BT +
-            NA_USB; // 0x9F USB & BLE1 & BLE0 &  BT Reader
+            NA_USB; // Remove NA_POPUP to avoid popup dialog
+
+        print("📋 Using listOption: $listOption");
+
         // var androidInfo = await DeviceInfoPlugin().androidInfo;
         // var sdkInt = androidInfo.version.sdkInt;
         var sdkInt = 31;
@@ -355,49 +369,60 @@ class ESMIDCard {
               ((listOption & NA_BT) != 0 ||
                   (listOption & NA_BLE1) != 0 ||
                   (listOption & NA_BLE0) != 0)) {
-            //   var isBluetoothScan = await Permission.bluetoothScan.request();
-            // var isBluetoothConnected =
-            //     await Permission.bluetoothConnect.request();
-            // if (isBluetoothScan != PermissionStatus.granted &&
-            //     isBluetoothConnected != PermissionStatus.granted) {
-            //   listOption = listOption -
-            //       (NA_SCAN +
-            //           NA_BLE1 +
-            //           NA_BLE0 +
-            //           NA_BT); //remove BLE0, BT Scanning
-            // }
+            // Bluetooth permission checks commented out for now
           }
         } else {
           if ((listOption & NA_SCAN) != 0 &&
               ((listOption & NA_BT) != 0 ||
                   (listOption & NA_BLE1) != 0 ||
                   (listOption & NA_BLE0) != 0)) {
-            // var isLocationDenied = await Permission.location.status.isDenied;
-            // if (isLocationDenied) {
-            //   listOption = listOption -
-            //       (NA_SCAN +
-            //           NA_BLE1 +
-            //           NA_BLE0 +
-            //           NA_BT); //remove BLE0, BT Scanning
-            // }
+            // Location permission checks commented out for now
           }
         }
 
-        result = await platform.invokeMethod('getReaderListMC',
-            listOption); // Call native method getReaderListMC
+        print(
+          "📞 About to call native getReaderListMC with option: $listOption",
+        );
+
+        // Add small delay to ensure native is ready
+        await Future.delayed(Duration(milliseconds: 100));
+
+        result = await platform.invokeMethod(
+          'getReaderListMC',
+          listOption,
+        ); // Call native method getReaderListMC
+
+        print("✅ Native call completed successfully, result: $result");
       } else if (IO.Platform.isIOS) {
         result = await platform.invokeMethod(
-            'getReaderListMC'); // Call native method getReaderListMC
+          'getReaderListMC',
+        ); // Call native method getReaderListMC
       }
+
+      if (result == null) {
+        print("❌ Native method returned null");
+        return null;
+      }
+
       var parts = result.split(';');
+      print("📋 Split result: $parts");
       return parts;
     } on PlatformException catch (e) {
       String text = "Failed to Invoke: '${e.message}'.";
+      print("❌ PlatformException in getReaderListDF: $text");
+      print("❌ PlatformException details: ${e.details}");
+      print("❌ PlatformException code: ${e.code}");
 
       // setState(() {
       textResult = text;
       isEnabled = true;
       // });
+      return null;
+    } catch (e) {
+      print("❌ General exception in getReaderListDF: $e");
+      print("❌ Exception type: ${e.runtimeType}");
+      textResult = "Unexpected error: $e";
+      isEnabled = true;
       return null;
     }
   }
@@ -405,8 +430,10 @@ class ESMIDCard {
   //////////////////////////////// Select Reader ////////////////////////////////
   Future<bool> selectReaderDF(String textReaderName) async {
     try {
-      int returnCode = await platform.invokeMethod('selectReaderMC',
-          textReaderName); // Call native method selectReaderMC
+      int returnCode = await platform.invokeMethod(
+        'selectReaderMC',
+        textReaderName,
+      ); // Call native method selectReaderMC
 
       if (returnCode != NA_SUCCESS) {
         // setState(() {
@@ -458,7 +485,8 @@ class ESMIDCard {
     }
     try {
       var result = await platform.invokeMethod(
-          'getReaderInfoMC'); // Call native method getReaderInfoMC
+        'getReaderInfoMC',
+      ); // Call native method getReaderInfoMC
       var parts = result.split(';');
       int returnCode = int.parse(parts[0].trim());
       if (returnCode == NA_SUCCESS) {
@@ -481,8 +509,9 @@ class ESMIDCard {
   //////////////////////////////// Connect Card ////////////////////////////////
   Future<int> connectCardDF() async {
     try {
-      int returnCode = await platform
-          .invokeMethod('connectCardMC'); // Call native method connectCardMC
+      int returnCode = await platform.invokeMethod(
+        'connectCardMC',
+      ); // Call native method connectCardMC
       return returnCode;
     } on PlatformException {
       return NA_CONNECTION_ERROR;
@@ -492,8 +521,9 @@ class ESMIDCard {
   //////////////////////////////// Get NID Number ////////////////////////////////
   Future<dynamic> getNIDNumberDF() async {
     try {
-      String result = await platform
-          .invokeMethod('getNIDNumberMC'); // Call native method getNIDNumberMC
+      String result = await platform.invokeMethod(
+        'getNIDNumberMC',
+      ); // Call native method getNIDNumberMC
       var parts = result.split(';');
       return parts;
     } on PlatformException {
@@ -504,8 +534,9 @@ class ESMIDCard {
   //////////////////////////////// Get Text ////////////////////////////////
   Future<dynamic> getTextDF() async {
     try {
-      String result = await platform
-          .invokeMethod('getTextMC'); // Call native method getTextMC
+      String result = await platform.invokeMethod(
+        'getTextMC',
+      ); // Call native method getTextMC
       var parts = result.split(';');
       return parts;
     } on PlatformException {
@@ -516,8 +547,9 @@ class ESMIDCard {
   //////////////////////////////// Get Photo ////////////////////////////////
   Future<dynamic> getPhotoDF() async {
     try {
-      String result = await platform
-          .invokeMethod('getPhotoMC'); // Call native method getPhotoMC
+      String result = await platform.invokeMethod(
+        'getPhotoMC',
+      ); // Call native method getPhotoMC
 
       var parts = result.split(';');
 
@@ -531,7 +563,8 @@ class ESMIDCard {
   Future<int> disconnectCardDF() async {
     try {
       int returnCode = await platform.invokeMethod(
-          'disconnectCardMC'); // Call native method disconnectCardMC
+        'disconnectCardMC',
+      ); // Call native method disconnectCardMC
       return returnCode;
     } on PlatformException {
       return -1;
@@ -542,7 +575,8 @@ class ESMIDCard {
   Future<int> deselectReaderDF() async {
     try {
       int returnCode = await platform.invokeMethod(
-          'deselectReaderMC'); // Call native method deselectReaderMC
+        'deselectReaderMC',
+      ); // Call native method deselectReaderMC
       return returnCode;
     } on PlatformException {
       return -1;
@@ -553,7 +587,8 @@ class ESMIDCard {
   Future<int> updateLicenseFileDF() async {
     try {
       int returnCode = await platform.invokeMethod(
-          'updateLicenseFileMC'); // Call native method updateLicenseMC
+        'updateLicenseFileMC',
+      ); // Call native method updateLicenseMC
       return returnCode;
     } on PlatformException {
       return NA_LICENSE_UPDATE_ERROR;
@@ -565,7 +600,8 @@ class ESMIDCard {
     try {
       int returnCode = -1;
       final result = await platform.invokeMethod(
-          'getCardStatusMC'); // Call native method getCardStatusMC
+        'getCardStatusMC',
+      ); // Call native method getCardStatusMC
       if (result is int) {
         returnCode = result;
       } else {
@@ -582,8 +618,9 @@ class ESMIDCard {
   //////////////////////////////// Get RID ////////////////////////////////
   Future<dynamic> getReaderIDDF() async {
     try {
-      String result = await platform
-          .invokeMethod('getReaderIDMC'); // Call native method getReaderIDMC
+      String result = await platform.invokeMethod(
+        'getReaderIDMC',
+      ); // Call native method getReaderIDMC
       var parts = result.split(';');
       return parts;
     } on PlatformException {
@@ -596,7 +633,8 @@ class ESMIDCard {
     String text = "";
     try {
       text = await platform.invokeMethod(
-          'getSoftwareInfoMC'); // Call native method getSoftwareInfoMC
+        'getSoftwareInfoMC',
+      ); // Call native method getSoftwareInfoMC
       // setState(() {
       sSoftwareInfo = text;
       // });
@@ -615,7 +653,8 @@ class ESMIDCard {
     String result = "";
     try {
       result = await platform.invokeMethod(
-          'getLicenseInfoMC'); // Call native method getLicenseInfoMC
+        'getLicenseInfoMC',
+      ); // Call native method getLicenseInfoMC
       // setState(() {
       sLicenseInfo = result;
       // });
@@ -629,8 +668,9 @@ class ESMIDCard {
   //////////////////////////////////// Close Lib ////////////////////////////////////
   Future<int> closeLibDF() async {
     try {
-      int returnCode = await platform
-          .invokeMethod('closeLibMC'); // Call native method closeLibMC
+      int returnCode = await platform.invokeMethod(
+        'closeLibMC',
+      ); // Call native method closeLibMC
       return returnCode;
     } on PlatformException {
       return -1;
@@ -675,7 +715,7 @@ class ESMIDCard {
       return "-18 License update error.";
     } else if (returnCode == NA_STORAGE_PERMISSION_ERROR) {
       return "-31 Storage permission error.";
-    } else if (returnCode == NA_LOCATION_PERMISSION_ERROR) { 
+    } else if (returnCode == NA_LOCATION_PERMISSION_ERROR) {
       return "-32 Location permission error.";
     } else if (returnCode == NA_BLUETOOTH_PERMISSION_ERROR) {
       return "-33 Bluetooth permission error.";
@@ -688,60 +728,110 @@ class ESMIDCard {
 
   //////////////////////////////// Button Find Reader ////////////////////////////////
   Future<void> findReader() async {
+    print("🔍 findReader() called");
+
+    // Reset connection state
     isReaderConnected = false;
-    
-    String text = "Reader scanning...";
-    // setState(() {
     isEnabled = false;
-    textResult = "";
+
+    String text = "Reader scanning...";
     readerName = text;
+    textResult = "";
     bytesPhoto = bytesAppPhoto;
-    // });
 
-    // ===================== Get Reader List ======================== //
-    var parts = await getReaderListDF();
-    var returnCode = int.parse(parts[0].trim());
-    print("call getReaderListDF " + parts.toString());
-
-    if (parts == null || returnCode == 0 || returnCode == -3) {
-      print("call Reader not found");
-      // setState(() {
-      readerName = 'Reader: ';
-      isEnabled = true;
-      textResult = "-3 Reader not found.";
-      // });
-    } else if (returnCode < 0) {
-      print("call Reader error");
-      // setState(() {
-      isEnabled = true;
-      readerName = 'Reader: ';
-      textResult = checkException(returnCode);
-      // });
-    } else if (returnCode > 0) {
-      String textReaderName = parts[1].trim();
-      // setState(() {
-      readerName = "Reader selecting...";
-      // });
-
-      print("call selectReaderDFxx " + textReaderName.toString());
-
-      // ===================== Select Reader ======================== //
-      if (await selectReaderDF(textReaderName) == true) {
-        // ===================== Get Reader Info ======================== //
-        await getReaderInfoDF();
-
-        // ===================== Get License Info ======================== //
-        await getLicenseInfoDF();
+    try {
+      // ===================== Get Reader List ======================== //
+      print("📡 Getting reader list...");
+      var parts;
+      try {
+        parts = await getReaderListDF();
+      } catch (e) {
+        print("❌ Error in getReaderListDF: $e");
+        readerName = 'Reader: ';
+        isEnabled = true;
+        textResult = "Error getting reader list: $e";
+        return;
       }
+
+      if (parts == null) {
+        print("❌ getReaderListDF returned null");
+        readerName = 'Reader: ';
+        isEnabled = true;
+        textResult = "-3 Reader not found.";
+        return;
+      }
+
+      var returnCode = int.parse(parts[0].trim());
+      print("📋 getReaderListDF result: $returnCode, parts: $parts");
+
+      if (returnCode == 0 || returnCode == -3) {
+        print("❌ No readers found");
+        readerName = 'Reader: ';
+        isEnabled = true;
+        textResult = "-3 Reader not found.";
+        return;
+      } else if (returnCode < 0) {
+        print("❌ Reader list error: $returnCode");
+        isEnabled = true;
+        readerName = 'Reader: ';
+        textResult = checkException(returnCode);
+        return;
+      } else if (returnCode > 0 && parts.length > 1) {
+        String textReaderName = parts[1].trim();
+        print("🎯 Found reader: $textReaderName");
+
+        readerName = "Reader selecting...";
+
+        // ===================== Select Reader ======================== //
+        print("🔗 Selecting reader: $textReaderName");
+        bool success = await selectReaderDF(textReaderName);
+
+        if (success) {
+          print("✅ Reader selected successfully: $textReaderName");
+          isReaderConnected = true;
+          readerName = 'Reader: $textReaderName';
+
+          // ===================== Get Reader Info ======================== //
+          await getReaderInfoDF();
+
+          // ===================== Get License Info ======================== //
+          await getLicenseInfoDF();
+
+          print("🎉 Reader setup complete!");
+        } else {
+          print("❌ Failed to select reader: $textReaderName");
+          isReaderConnected = false;
+          readerName = 'Reader: ';
+          textResult = "Failed to connect to reader: $textReaderName";
+        }
+      } else {
+        print("❌ Invalid reader list response");
+        readerName = 'Reader: ';
+        isEnabled = true;
+        textResult = "Invalid reader response";
+      }
+    } catch (e) {
+      print("❌ Exception in findReader: $e");
+      readerName = 'Reader: ';
+      isEnabled = true;
+      textResult = "Error finding reader: $e";
+    } finally {
+      isEnabled = true;
+      print("🏁 findReader completed - isReaderConnected: $isReaderConnected");
     }
-    // setState(() {
-    isEnabled = true;
-    // });
   }
 
   //////////////////////////////// Button Read Card ////////////////////////////////
   Future<void> buttonRead() async {
+    print("🔄 buttonRead() called - isReading: $isReading");
+
+    if (isReading) {
+      print("⚠️ Already reading, skipping");
+      return;
+    }
+
     isReading = true;
+    print("✅ Starting buttonRead process");
 
     String text = "Reading...";
     // setState(() {
@@ -814,7 +904,9 @@ class ESMIDCard {
       textResult = text;
       // });
 
+      print("📤 Sending data to stream: ${text.substring(0, 50)}...");
       entry.sink.add(text);
+      print("✅ Data sent to stream successfully");
 
       // ===================== Get Photo ======================== //
       var parts2 = await getPhotoDF();
@@ -854,7 +946,8 @@ class ESMIDCard {
       double readPhotoTime = ((endTime - startTime) / 1000);
 
       // setState(() {
-      textResult = textResult +
+      textResult =
+          textResult +
           "\nRead Text+Photo: " +
           readPhotoTime.toStringAsFixed(2) +
           " s";
@@ -918,7 +1011,6 @@ class ESMIDCard {
 
   //////////////////////////////// Button Get Card Status ////////////////////////////////
   Future<void> autoReadProcess() async {
- 
     String text = "Checking card in reader...";
     if (isReading == false) {
       // setState(() {
