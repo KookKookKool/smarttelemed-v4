@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
 
 class ProfilePtScreen extends StatelessWidget {
   const ProfilePtScreen({Key? key}) : super(key: key);
@@ -8,7 +9,6 @@ class ProfilePtScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // กำหนดความกว้างคอนเทนต์ให้ใกล้เคียงภาพ (ดูสวยบนมือถือทุกขนาด)
     const double contentWidth = 360;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: Container(
@@ -70,10 +70,18 @@ class ProfilePtScreen extends StatelessWidget {
                                 fontSize: 12,
                                 color: Colors.black54,
                               ),
-                            ),
+                            ), 
                           ],
                         ),
                       ],
+                    ), 
+                    //Time Stamp
+                    ThTimeText(
+                      showThaiDate: true,
+                      pattern: 'HH:mm:ss',
+                      useBuddhistYear: true,        // ค่าเริ่มต้นเป็น true อยู่แล้ว
+                      dateTimeSeparator: ' เวลา ',   // ดีฟอลต์
+                      appendThaiNi: true,           // ดีฟอลต์
                     ),
 
                     const SizedBox(height: 24),

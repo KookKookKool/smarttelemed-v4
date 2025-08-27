@@ -33,6 +33,8 @@ import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
 import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:smarttelemed_v4/core/device/connect/device_settings.dart';
+import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
+import 'package:smarttelemed_v4/core/vitalsign/vitalsign_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +56,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorObservers: [appRouteObserver],
       title: 'Smart Telemed V4',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
@@ -92,6 +95,7 @@ class MyApp extends StatelessWidget {
         '/doctorResult': (context) => const DoctorResultScreen(),
         '/deviceConnect': (context) => const DeviceConnectPage(),
         '/devicesetting': (context) => const DeviceSettingPage(),
+        '/vitalsign': (context) => const VitalSignScreen(),
         // เพิ่ม routes อื่นๆ ตามต้องการ
       },
     );

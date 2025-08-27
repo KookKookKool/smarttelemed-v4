@@ -16,10 +16,10 @@ import 'package:smarttelemed_v4/core/device/widgets/devices_menu_section.dart';
 
 import 'package:smarttelemed_v4/core/vitalsign/widgets/submit_vitals_button.dart';
 
+import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
+
 class VitalSignScreen extends StatelessWidget {
   const VitalSignScreen({Key? key}) : super(key: key);
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -34,22 +34,31 @@ class VitalSignScreen extends StatelessWidget {
                 // ── AppBar แบบกำหนดเอง ───────────────────────────────
                 Padding(
                   padding: const EdgeInsets.only(
-                    top: 24, left: 16, right: 16, bottom: 8,
+                    top: 24,
+                    left: 16,
+                    right: 16,
+                    bottom: 8,
                   ),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+                        icon: const Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.black87,
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                       const SizedBox(width: 8),
                       const Text(
                         'ตรวจ',
                         style: TextStyle(
-                          color: Colors.black87, fontSize: 20, fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       const Spacer(),
+
                       // ปุ่มไปหน้าอุปกรณ์แบบเต็มหน้า
                       // TextButton.icon(
                       //   onPressed: () {
@@ -64,7 +73,14 @@ class VitalSignScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-
+                //Time Stamp
+                ThTimeText(
+                  showThaiDate: true,
+                  pattern: 'HH:mm:ss',
+                  useBuddhistYear: true, // ค่าเริ่มต้นเป็น true อยู่แล้ว
+                  dateTimeSeparator: ' เวลา ', // ดีฟอลต์
+                  appendThaiNi: true, // ดีฟอลต์
+                ),
                 // ── เนื้อหาหลัก ───────────────────────────────────────
                 const Expanded(
                   child: SingleChildScrollView(
@@ -79,7 +95,7 @@ class VitalSignScreen extends StatelessWidget {
                           minWidth: 80,
                           maxWidth: 114,
                           fontSize: 16,
-                        ),   // <<<<<< ปุ่มส่งไป EMR
+                        ), // <<<<<< ปุ่มส่งไป EMR
                         SizedBox(height: 24),
 
                         // เมนูเดิมของคุณ
@@ -89,13 +105,15 @@ class VitalSignScreen extends StatelessWidget {
                         // ✅ แสดง “อุปกรณ์ที่เชื่อมต่ออยู่” แบบฝังหน้า (สั้น/เข้าใจง่าย)
                         //    - จะแสดงเมื่อเชื่อมต่อและมีค่าเข้ามา (ตามที่ widget นี้จัดการ)
                         //    - เก็บค่าและค้างการ์ดตาม logic ภายในโมดูล
-                        
+
                         // DevicesInlineSection(
                         //   title: 'Devices',
                         //   showHeader: true,
                         // ),แสดงหลังเชื่อมต่อและถูกใช้งาน
                         DevicesMenuSection(), //แสดงเป็นปุ่เพื่อเข้าชม video
-                        SizedBox(height: 16), // เผื่อพื้นที่ใต้สุดสำหรับปุ่มนำทาง
+                        SizedBox(
+                          height: 16,
+                        ), // เผื่อพื้นที่ใต้สุดสำหรับปุ่มนำทาง
                       ],
                     ),
                   ),
