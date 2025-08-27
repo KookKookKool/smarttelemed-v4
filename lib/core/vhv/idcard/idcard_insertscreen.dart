@@ -3,8 +3,8 @@ import 'package:smarttelemed_v4/style/background_2.dart';
 import 'package:smarttelemed_v4/style/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:smarttelemed_v4/core/auth/idcard_reader.dart';
-import 'package:smarttelemed_v4/core/splash/plus_loader.dart';
 import 'dart:async';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:smarttelemed_v4/storage/storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io' show Platform;
@@ -98,7 +98,14 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
               List<String> splitted = data.split('#');
               debugPrint("IDCard $data");
 
-              // ลบ Toast แสดงข้อมูลบัตรออก - เหลือแค่ debug log
+              Fluttertoast.showToast(
+                msg: "" + data,
+                toastLength: Toast.LENGTH_SHORT, // or Toast.LENGTH_LONG
+                gravity: ToastGravity.BOTTOM, // TOP, CENTER, BOTTOM
+                backgroundColor: Colors.black54,
+                textColor: Colors.white,
+                fontSize: 16.0,
+              );
 
               //
               final idCard = splitted.isNotEmpty ? splitted[0] : '';
@@ -145,7 +152,14 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                 await IdCardStorage.saveIdCardData(dataToSave);
                 debugPrint('💾 Auto-saved ID card data to storage');
 
-                // ลบ Toast บันทึกข้อมูลออก - เหลือแค่ debug log
+                // แสดง Toast แจ้งว่าบันทึกแล้ว
+                Fluttertoast.showToast(
+                  msg: '✅ บันทึกข้อมูลบัตรแล้ว',
+                  toastLength: Toast.LENGTH_SHORT,
+                  gravity: ToastGravity.CENTER,
+                  backgroundColor: Colors.green,
+                  textColor: Colors.white,
+                );
               } catch (e) {
                 debugPrint('❌ Error auto-saving ID card: $e');
               }
@@ -153,12 +167,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
               // Show confirm dialog to user
               if (mounted) {
                 debugPrint('🎬 Showing dialog...');
-                await _showIdCardDialog(
-                  fullName,
-                  idCard,
-                  address,
-                  dataSource: 'card_reader',
-                );
+                await _showIdCardDialog(fullName, idCard, address);
                 debugPrint('✅ Dialog completed');
               } else {
                 _isHandling = false;
@@ -214,8 +223,8 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
         } else {
           // no entry stream available yet
           debugPrint('❌ No entry stream available');
-          print(
-            'Debug: ไม่พบการเชื่อมต่อเครื่องอ่าน โปรดกด "อ่าน" เพื่อเลือกอุปกรณ์',
+          Fluttertoast.showToast(
+            msg: 'ไม่พบการเชื่อมต่อเครื่องอ่าน โปรดกด "อ่าน" เพื่อเลือกอุปกรณ์',
           );
         }
         // Don't start automatic card checking - wait for user action
@@ -242,10 +251,8 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
         final ok = statuses.values.every((s) => s.isGranted);
         if (!ok) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('โปรดอนุญาตสิทธิ์ Bluetooth/Location ในแอป'),
-            ),
+          Fluttertoast.showToast(
+            msg: 'โปรดอนุญาตสิทธิ์ Bluetooth/Location ในแอป',
           );
           // open settings so user can allow
           openAppSettings();
@@ -255,9 +262,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
         // iOS: request bluetooth permission
         final status = await Permission.bluetooth.request();
         if (!status.isGranted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('โปรดอนุญาตสิทธิ์ Bluetooth ในแอป')),
-          );
+          Fluttertoast.showToast(msg: 'โปรดอนุญาตสิทธิ์ Bluetooth ในแอป');
           openAppSettings();
           return false;
         }
@@ -309,7 +314,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
     }
 
     if (status == null) {
-      print('Debug: ไม่สามารถตรวจสอบสถานะบัตรได้');
+      Fluttertoast.showToast(msg: 'ไม่สามารถตรวจสอบสถานะบัตรได้');
       if (mounted)
         setState(() {
           _isReading = false;
@@ -322,7 +327,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
     if (status != 1) {
       final err = reader?.checkException(status);
-      print('Debug: สถานะบัตร: ${err ?? status.toString()}');
+      Fluttertoast.showToast(msg: 'สถานะบัตร: ${err ?? status.toString()}');
       if (mounted)
         setState(() {
           _isReading = false;
@@ -333,11 +338,11 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
       return;
     }
 
-    // trigger a single read attempt
+    // trigger a single read attempt - keep loader showing
     try {
-      // ลบ Toast "เริ่มอ่านบัตร" ออก - เหลือแค่ debug log
-      debugPrint('📖 Starting card read auto...');
+      Fluttertoast.showToast(msg: 'เริ่มอ่านบัตร กรุณารอสักครู่');
       reader?.readAuto();
+      // Note: loader will remain showing until stream receives data or timeout
     } catch (e) {
       debugPrint('readAuto error: $e');
       // Reset flags on readAuto error
@@ -347,48 +352,28 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
           _loading = false;
           _isHandling = false;
         });
-      // เปลี่ยนเป็น SnackBar แทน Toast
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('เกิดข้อผิดพลาดในการอ่านบัตร'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      Fluttertoast.showToast(msg: 'เกิดข้อผิดพลาดในการอ่านบัตร');
       // Don't restart polling - wait for user action
       return;
     }
 
     // safety timeout: clear flags if no stream response
     // Timer สำหรับ timeout การอ่านบัตร
-    debugPrint('⏰ Setting 10-second timeout timer');
-    _actionTimeoutTimer = Timer(const Duration(seconds: 10), () {
-      debugPrint('⏰ TIMEOUT: 10 seconds elapsed without card data');
-      if (mounted) {
+    debugPrint('⏰ Setting 15-second timeout timer for card reading');
+    _actionTimeoutTimer = Timer(const Duration(seconds: 15), () {
+      debugPrint('⏰ TIMEOUT: 15 seconds elapsed without card data');
+      if (mounted)
         setState(() {
           _isReading = false;
-          _loading = false;
+          _loading = false; // Hide loader on timeout
           _isHandling = false;
         });
-
-        // เปลี่ยนเป็น SnackBar แทน Toast
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('ไม่พบข้อมูลบัตร โปรดลองอีกครั้ง'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
-            action: SnackBarAction(
-              label: 'ตกลง',
-              textColor: Colors.white,
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              },
-            ),
-          ),
-        );
-      }
+      Fluttertoast.showToast(
+        msg: 'หมดเวลาการอ่านบัตร โปรดลองอีกครั้ง',
+        backgroundColor: Colors.orange,
+        textColor: Colors.white,
+        toastLength: Toast.LENGTH_LONG,
+      );
       // Don't restart polling - wait for user action
     });
   }
@@ -424,7 +409,6 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
     String idCard,
     String address, {
     bool isFromStorage = false,
-    String? dataSource,
   }) async {
     debugPrint('🎭 _showIdCardDialog called with:');
     debugPrint('   fullName: "$fullName"');
@@ -446,7 +430,6 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
           idCard: idCard,
           address: address,
           isFromStorage: isFromStorage,
-          dataSource: dataSource,
           onConfirm: () async {
             try {
               // Cancel any remaining timers
@@ -464,7 +447,13 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                 };
                 await IdCardStorage.saveIdCardData(dataToSave);
 
-                print('Debug: บันทึกข้อมูลเรียบร้อย');
+                Fluttertoast.showToast(
+                  msg: 'บันทึกข้อมูลเรียบร้อย',
+                  toastLength: Toast.LENGTH_SHORT,
+                  gravity: ToastGravity.CENTER,
+                  backgroundColor: Colors.green,
+                  textColor: Colors.white,
+                );
               }
 
               // Navigate to next page
@@ -472,11 +461,10 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
               Navigator.pushNamed(context, '/idcardloader'); // go to next page
             } catch (e) {
               debugPrint('Error saving id card: $e');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('เกิดข้อผิดพลาดในการบันทึก'),
-                  backgroundColor: Colors.red,
-                ),
+              Fluttertoast.showToast(
+                msg: 'เกิดข้อผิดพลาดในการบันทึก',
+                backgroundColor: Colors.red,
+                textColor: Colors.white,
               );
             }
 
@@ -560,24 +548,14 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
       await IdCardStorage.saveIdCardData(mockDataToSave);
       debugPrint('💾 Saved mock ID card data to storage: $mockFullName');
 
-      // แสดง SnackBar แจ้งเตือน
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.science, color: Colors.white, size: 20),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text('ใช้ข้อมูลจำลองสำหรับทดสอบ: $mockFullName'),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      // แสดง Toast แจ้งเตือน
+      Fluttertoast.showToast(
+        msg: '🧪 ใช้ข้อมูลจำลองสำหรับทดสอบ: $mockFullName',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.CENTER,
+        backgroundColor: Colors.orange,
+        textColor: Colors.white,
+      );
 
       // แสดง Dialog ข้อมูลจำลอง
       if (mounted) {
@@ -586,19 +564,15 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
           mockIdCard,
           mockAddress,
           isFromStorage: false,
-          dataSource: 'mock_data',
         );
       }
     } catch (e) {
       debugPrint('❌ Error using mock data: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('เกิดข้อผิดพลาดในการใช้ข้อมูลจำลอง'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      Fluttertoast.showToast(
+        msg: 'เกิดข้อผิดพลาดในการใช้ข้อมูลจำลอง',
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
     }
   }
 
@@ -609,11 +583,12 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
       final storedData = await IdCardStorage.loadIdCardData();
 
       if (storedData == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('ไม่พบข้อมูลบัตรที่บันทึกไว้'),
-            backgroundColor: Colors.orange,
-          ),
+        Fluttertoast.showToast(
+          msg: 'ไม่พบข้อมูลบัตรที่บันทึกไว้',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          backgroundColor: Colors.orange,
+          textColor: Colors.white,
         );
         return;
       }
@@ -621,25 +596,19 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
       final fullName = storedData['fullName'] ?? 'ไม่มีข้อมูล';
       final idCard = storedData['idCard'] ?? 'ไม่มีข้อมูล';
       final address = storedData['address'] ?? 'ไม่มีข้อมูล';
-      final source = storedData['source'] ?? 'unknown';
 
       debugPrint('📄 Showing stored data: $fullName, $idCard');
 
       // แสดง Dialog จากข้อมูลที่บันทึกไว้ (ข้อมูลจาก storage)
-      await _showIdCardDialog(
-        fullName,
-        idCard,
-        address,
-        isFromStorage: true,
-        dataSource: source,
-      );
+      await _showIdCardDialog(fullName, idCard, address, isFromStorage: true);
     } catch (e) {
       debugPrint('❌ Error loading stored ID card data: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('เกิดข้อผิดพลาดในการโหลดข้อมูล'),
-          backgroundColor: Colors.red,
-        ),
+      Fluttertoast.showToast(
+        msg: 'เกิดข้อผิดพลาดในการโหลดข้อมูล',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.CENTER,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
       );
     }
   }
@@ -653,14 +622,21 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
     debugPrint('🎯 Starting card reading process...');
 
-    // Check permissions first
-    final ok = await _ensurePermissions();
-    if (!ok) return;
-
+    // Show loader immediately when button is pressed
     setState(() {
       _loading = true;
       _isReading = true;
     });
+
+    // Check permissions first
+    final ok = await _ensurePermissions();
+    if (!ok) {
+      setState(() {
+        _loading = false;
+        _isReading = false;
+      });
+      return;
+    }
 
     try {
       // Step 1: Initialize reader completely if needed
@@ -742,7 +718,13 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                 await IdCardStorage.saveIdCardData(dataToSave);
                 debugPrint('💾 Auto-saved ID card data to storage');
 
-                print('Debug: บันทึกข้อมูลบัตรแล้ว');
+                Fluttertoast.showToast(
+                  msg: '✅ บันทึกข้อมูลบัตรแล้ว',
+                  toastLength: Toast.LENGTH_SHORT,
+                  gravity: ToastGravity.CENTER,
+                  backgroundColor: Colors.green,
+                  textColor: Colors.white,
+                );
               } catch (e) {
                 debugPrint('❌ Error auto-saving ID card: $e');
               }
@@ -774,7 +756,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
       // Find and connect to reader
       debugPrint('🔍 Finding reader...');
-      // ลบ Toast ออก - เหลือแค่ debug log
+      Fluttertoast.showToast(msg: 'กำลังค้นหาเครื่องอ่านบัตร...');
 
       // Add extra delay to ensure native is fully ready
       debugPrint('⏳ Waiting for native initialization...');
@@ -791,35 +773,24 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
         throw Exception('ไม่พบเครื่องอ่านบัตรหรือเชื่อมต่อไม่ได้');
       }
 
-      // ลบ Toast แสดงความสำเร็จออก - เหลือแค่ debug log
-      debugPrint('✅ Reader connected successfully');
+      // Show success message
+      Fluttertoast.showToast(
+        msg: '✅ เชื่อมต่อเครื่องอ่านบัตรสำเร็จ',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.CENTER,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+      );
 
       // Start reading process with loading
       debugPrint('📖 Starting card read...');
-      // ลบ Toast กำลังอ่านบัตรออก - เหลือแค่ debug log
+      Fluttertoast.showToast(msg: 'กำลังอ่านบัตร กรุณาใส่บัตรประชาชน');
 
       await _handleConnectedRead();
     } catch (e) {
       debugPrint('❌ Error in card reading: $e');
 
-      // แสดงข้อผิดพลาดใน UI แทน Toast
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('เกิดข้อผิดพลาด: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-            action: SnackBarAction(
-              label: 'ตกลง',
-              textColor: Colors.white,
-              onPressed: () {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-              },
-            ),
-          ),
-        );
-      }
-
+      // Hide loader and reset flags on error
       if (mounted) {
         setState(() {
           _loading = false;
@@ -827,6 +798,15 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
           _isHandling = false;
         });
       }
+
+      // Show error message
+      Fluttertoast.showToast(
+        msg: 'เกิดข้อผิดพลาด: ${e.toString()}',
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.CENTER,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
     }
   }
 
@@ -997,7 +977,58 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // ปุ่มแสดงข้อมูลล่าสุด
+                      // ปุ่มใช้ข้อมูลจำลอง
+                      // SizedBox(
+                      //   width: 180,
+                      //   height: 45,
+                      //   child: DecoratedBox(
+                      //     decoration: BoxDecoration(
+                      //       gradient: LinearGradient(
+                      //         colors: [
+                      //           Colors.orange.shade400,
+                      //           Colors.orange.shade600,
+                      //         ],
+                      //       ),
+                      //       borderRadius: BorderRadius.circular(25),
+                      //       boxShadow: [
+                      //         BoxShadow(
+                      //           color: Colors.orange.withOpacity(0.3),
+                      //           blurRadius: 8,
+                      //           offset: Offset(0, 4),
+                      //         ),
+                      //       ],
+                      //     ),
+                      //     child: ElevatedButton.icon(
+                      //       style: ElevatedButton.styleFrom(
+                      //         backgroundColor: Colors.transparent,
+                      //         shadowColor: Colors.transparent,
+                      //         shape: RoundedRectangleBorder(
+                      //           borderRadius: BorderRadius.circular(25),
+                      //         ),
+                      //         elevation: 0,
+                      //       ),
+                      //       onPressed: () async {
+                      //         await _useMockData();
+                      //       },
+                      //       icon: Icon(
+                      //         Icons.science,
+                      //         color: Colors.white,
+                      //         size: 18,
+                      //       ),
+                      //       label: const Text(
+                      //         'ใช้ข้อมูลจำลอง',
+                      //         style: TextStyle(
+                      //           fontSize: 14,
+                      //           color: Colors.white,
+                      //           fontWeight: FontWeight.w600,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
+                      // const SizedBox(height: 16),
+
+                      // const SizedBox(height: 24),
                       // SizedBox(
                       //   width: 180,
                       //   height: 41,
@@ -1041,52 +1072,6 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                       //   ),
                       // ),
                       // const SizedBox(height: 24),
-
-                      // ปุ่มใช้ข้อมูลจำลอง
-                      SizedBox(
-                        width: 180,
-                        height: 41,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.orange.shade400,
-                                Colors.orange.shade600,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.orange.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              elevation: 0,
-                            ),
-                            onPressed: () async {
-                              await _useMockData();
-                            },
-                            child: const Text(
-                              'ใช้ข้อมูลจำลอง',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
                       // text for no ID card - เปลี่ยนเป็น TextButton ที่คลิกได้
                       TextButton(
                         onPressed: () async {
@@ -1098,9 +1083,30 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                             fontSize: 16,
                             decoration: TextDecoration.underline,
                           ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
                         ),
-                        child: const Text(
-                          'ไม่มีบัตรประชาชน (คลิกเพื่อใช้ข้อมูลจำลอง)',
+                        child: Column(
+                          children: [
+                            const Text(
+                              'ไม่มีบัตรประชาชน',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '(คลิกเพื่อใช้ข้อมูลจำลอง)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -1108,12 +1114,99 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                   ),
                 ),
               ),
-              // loader overlay should be last in the Stack so it appears on top
+              // Beautiful animated loader overlay covering entire screen
               if (_loading)
                 Positioned.fill(
-                  child: Container(
-                    color: Colors.black45,
-                    child: const Center(child: PlusLoader(size: 100.0)),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.7),
+                          Colors.black.withOpacity(0.9),
+                        ],
+                      ),
+                    ),
+                    child: Center(
+                      child: TweenAnimationBuilder<double>(
+                        duration: const Duration(milliseconds: 500),
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        builder: (context, value, child) {
+                          return Transform.scale(
+                            scale: 0.8 + (0.2 * value),
+                            child: Opacity(
+                              opacity: value,
+                              child: Container(
+                                padding: const EdgeInsets.all(30),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 15,
+                                      spreadRadius: 5,
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Animated circular progress indicator with gradient
+                                    Container(
+                                      width: 60,
+                                      height: 60,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 4,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              AppColors.gradientStart,
+                                            ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    // Loading text with icon
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.credit_card,
+                                          color: AppColors.gradientStart,
+                                          size: 24,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          _isReading
+                                              ? 'กำลังอ่านบัตรประชาชน'
+                                              : 'กำลังเตรียมเครื่องอ่านบัตร',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _isReading
+                                          ? 'โปรดใส่บัตรในเครื่องอ่าน...'
+                                          : 'โปรดรอสักครู่...',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -1131,7 +1224,6 @@ class IdCardInfoDialog extends StatelessWidget {
   final VoidCallback onConfirm;
   final VoidCallback onCancel;
   final bool isFromStorage;
-  final String? dataSource; // เพิ่มฟิลด์สำหรับระบุแหล่งข้อมูล
 
   const IdCardInfoDialog({
     Key? key,
@@ -1141,7 +1233,6 @@ class IdCardInfoDialog extends StatelessWidget {
     required this.onConfirm,
     required this.onCancel,
     this.isFromStorage = false,
-    this.dataSource,
   }) : super(key: key);
 
   @override
@@ -1160,33 +1251,6 @@ class IdCardInfoDialog extends StatelessWidget {
             'ข้อมูลบัตรประชาชน',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          // แสดงสถานะข้อมูลจำลอง
-          if (dataSource == 'mock_data') ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade100,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange.shade300),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.science, size: 12, color: Colors.orange.shade700),
-                  const SizedBox(width: 2),
-                  Text(
-                    'จำลอง',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.orange.shade700,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
       content: Container(

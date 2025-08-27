@@ -6,7 +6,8 @@ import 'package:smarttelemed_v4/core/device/api/clinic_api.dart';
 class SubmitVitalsButton extends StatefulWidget {
   const SubmitVitalsButton({
     super.key,
-    this.addHrUrl = 'https://test.com/clinic_masterclinic_master/clinic/StmsApi/add_visit', // TODO: เปลี่ยนเป็น emr-life.com
+    this.addHrUrl =
+        'https://emr-life.com/expert/telemed/StmsApi/add_visit', // TODO: เปลี่ยนเป็น emr-life.com
     this.careUnitId,
     this.publicId,
     this.recepPublicId,
@@ -49,7 +50,8 @@ class _SubmitVitalsButtonState extends State<SubmitVitalsButton> {
     setState(() {
       _careUnitId = widget.careUnitId ?? p.getString('cu.care_unit_id');
       _publicId = widget.publicId ?? p.getString('cu.public_id');
-      _recepPublicId = widget.recepPublicId ?? p.getString('cu.recep_public_id');
+      _recepPublicId =
+          widget.recepPublicId ?? p.getString('cu.recep_public_id');
     });
   }
 
@@ -78,7 +80,9 @@ class _SubmitVitalsButtonState extends State<SubmitVitalsButton> {
     );
 
     if (!mounted) return;
-    final text = res.ok ? 'ส่งข้อมูลสำเร็จ (${res.status})' : 'ส่งไม่สำเร็จ (${res.status})';
+    final text = res.ok
+        ? 'ส่งข้อมูลสำเร็จ (${res.status})'
+        : 'ส่งไม่สำเร็จ (${res.status})';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     setState(() => _sending = false);
   }
@@ -125,7 +129,7 @@ class _SubmitVitalsButtonState extends State<SubmitVitalsButton> {
                           color: Color(0x3300A47A),
                           blurRadius: 18,
                           offset: Offset(0, 8),
-                        )
+                        ),
                       ]
                     : const [],
               ),
