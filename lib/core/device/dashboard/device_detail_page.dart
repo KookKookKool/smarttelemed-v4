@@ -1,4 +1,3 @@
-// lib/core/device/dashboard/device_detail_page.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
@@ -7,6 +6,7 @@ import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 import 'package:smarttelemed_v4/core/device/session/device_session.dart';
 import 'package:smarttelemed_v4/core/device/session/pick_parser.dart';
 import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
+import 'package:smarttelemed_v4/core/device/video/device_video.dart';
 
 class DeviceDetailPage extends StatefulWidget {
   const DeviceDetailPage.session(this.session, {super.key}) : deviceId = null;
@@ -32,17 +32,14 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   }
 
   Future<void> _bootstrap() async {
-    // 1) ถ้าส่ง session มาโดยตรง → ใช้เลย
     if (widget.session != null) {
       _session = widget.session;
     } else {
       final id = widget.deviceId!;
-      // 2) ลองยืม session จาก Hub ก่อน
-      final fromHub = DeviceHub.I.sessionById(id);
-      if (fromHub != null) {
-        _session = fromHub;
-      } else {
-        // 3) ไม่มีใน Hub → สร้าง session ชั่วคราวเอง
+      // พยายามยืมจาก Hub ก่อน
+      DeviceSession? fromHub = DeviceHub.I.sessionById(id);
+      // ถ้าไม่มี ให้หาเองจาก connected devices
+      if (fromHub == null) {
         final connected = await FlutterBluePlus.connectedDevices;
         BluetoothDevice dev = connected.firstWhere(
           (d) => d.remoteId.str == id,
@@ -52,7 +49,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
         if (st != BluetoothConnectionState.connected) {
           try { await dev.connect(autoConnect: false, timeout: const Duration(seconds: 12)); } catch (_) {}
         }
-
         final s = DeviceSession(
           device: dev,
           onUpdate: () => mounted ? setState(() {}) : null,
@@ -62,17 +58,16 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
         await s.start(pickParser: pickParser);
         _session = s;
         _ownedSession = true;
+      } else {
+        _session = fromHub;
       }
     }
 
-    // ฟัง Hub เพื่อรีเฟรช UI เมื่อค่าข้างในขยับ (กรณีใช้ session จาก Hub)
-    _hubListenCancel = () {
-      // detach
-      DeviceHub.I.removeListener(_onHubChanged);
-    };
+    // ฟัง Hub ให้ UI อัปเดตเมื่อค่าเปลี่ยน
+    _hubListenCancel = () => DeviceHub.I.removeListener(_onHubChanged);
     DeviceHub.I.addListener(_onHubChanged);
 
-    // กันกรณี onUpdate ไม่ทันเด้ง
+    // กันกรณี onUpdate ไม่ทัน
     _tick = Stream.periodic(const Duration(milliseconds: 500)).listen((_) {
       if (mounted) setState(() {});
     });
@@ -89,7 +84,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   void dispose() {
     _tick?.cancel();
     _hubListenCancel?.call();
-    // ถ้า session เราสร้างเอง → ปิดให้
     if (_ownedSession) {
       _session?.dispose();
     }
@@ -124,14 +118,15 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     }
   }
 
+  // ชี้ไฟล์สื่อของอุปกรณ์ (แก้ .pm4 → .mp4)
   String _assetFor(_Kind k) {
     switch (k) {
-      case _Kind.bp: return 'assets/devices/bp.png';
-      case _Kind.spo2: return 'assets/devices/spo2.png';
-      case _Kind.temp: return 'assets/devices/thermo.png';
-      case _Kind.glucose: return 'assets/devices/glucose.png';
-      case _Kind.scale: return 'assets/devices/scale.png';
-      case _Kind.unknown: return 'assets/devices/unknown.png';
+      case _Kind.bp:      return 'assets/devices/video/bp.mp4';
+      case _Kind.spo2:    return 'assets/devices/video/spo2.mp4';
+      case _Kind.temp:    return 'assets/devices/video/thermo.mp4';
+      case _Kind.glucose: return 'assets/devices/video/glucose.mp4';
+      case _Kind.scale:   return 'assets/devices/video/scale.mp4';
+      case _Kind.unknown: return 'assets/devices/video/unknown.mp4';
     }
   }
 
@@ -139,7 +134,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     if (sys == null || dia == null) return '—';
     if (sys < 120 && dia < 80) return 'ความดันเหมาะสม';
     if (sys < 140 && dia < 90) return 'ความดันปกติ';
-    if (sys < 140 || dia < 100) return 'ความดันสูง';
+    if (sys < 160 || dia < 100) return 'ความดันสูง';
     return 'ความดันสูงมาก';
   }
 
@@ -187,6 +182,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     final m = s.latestData;
     final kind = _kind(m, s.device.platformName);
 
+    // header
     final header = Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
       child: Row(
@@ -207,6 +203,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
       ),
     );
 
+    // hero media (video / image)
     final hero = Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
       child: Container(
@@ -216,14 +213,10 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
           borderRadius: BorderRadius.circular(28),
         ),
         child: Center(
-          child: ClipRRect(
+          child: DeviceVideo(
+            assetPath: _assetFor(kind),
             borderRadius: BorderRadius.circular(24),
-            child: Image.asset(
-              _assetFor(kind),
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
-                  const Icon(Icons.devices_other, size: 96, color: Colors.black38),
-            ),
+            fit: BoxFit.contain,
           ),
         ),
       ),
@@ -245,6 +238,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
       ),
     );
 
+    // sections by device kind
     Widget body;
     switch (kind) {
       case _Kind.bp:
