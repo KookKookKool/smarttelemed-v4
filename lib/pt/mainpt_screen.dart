@@ -11,6 +11,7 @@ import 'package:smarttelemed_v4/pt/widgets/main_slider/main_slider.dart';
 
 // ปุ่มลัด
 import 'package:smarttelemed_v4/pt/widgets/quick_actions_row.dart';
+import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
 
 class MainPtScreen extends StatelessWidget {
   const MainPtScreen({Key? key}) : super(key: key);
@@ -18,14 +19,14 @@ class MainPtScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const double contentWidth = 360;
-
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: const Manubar(currentIndex: 1),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [Color(0xFFE8FFF7), Colors.white],
           ),
         ),
@@ -39,6 +40,14 @@ class MainPtScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     HeaderHospital(),
+                    //Time Stamp
+                    ThTimeText(
+                      showThaiDate: true,
+                      pattern: 'HH:mm:ss',
+                      useBuddhistYear: true,        // ค่าเริ่มต้นเป็น true อยู่แล้ว
+                      dateTimeSeparator: ' เวลา ',   // ดีฟอลต์
+                      appendThaiNi: true,           // ดีฟอลต์
+                    ),
                     SizedBox(height: 14),
                     PatientCard(),
                     SizedBox(height: 12),

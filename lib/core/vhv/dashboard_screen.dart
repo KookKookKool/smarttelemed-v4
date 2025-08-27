@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/style/background.dart';
 import 'package:smarttelemed_v4/widget/manubar.dart';
 import 'dart:math';
+import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -39,7 +40,9 @@ class DashboardScreen extends StatelessWidget {
                         // backgroundImage: AssetImage('assets/profile.jpg'),
                       ),
                     ),
+
                     const SizedBox(width: 12),
+
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

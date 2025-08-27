@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -34,6 +35,14 @@ class ProfileScreen extends StatelessWidget {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
+                    //Time Stamp
+                    ThTimeText(
+                      showThaiDate: true,
+                      pattern: 'HH:mm:ss',
+                      useBuddhistYear: true, // ค่าเริ่มต้นเป็น true อยู่แล้ว
+                      dateTimeSeparator: ' เวลา ', // ดีฟอลต์
+                      appendThaiNi: true, // ดีฟอลต์
+                    ),
                     const SizedBox(height: 20),
 
                     // Profile Picture + Edit Button
@@ -59,7 +68,7 @@ class ProfileScreen extends StatelessWidget {
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.1),
                                     blurRadius: 4,
-                                  )
+                                  ),
                                 ],
                               ),
                               padding: const EdgeInsets.all(6),
@@ -76,7 +85,9 @@ class ProfileScreen extends StatelessWidget {
                     const Text(
                       "#12345",
                       style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
 
                     const SizedBox(height: 6),
@@ -84,7 +95,9 @@ class ProfileScreen extends StatelessWidget {
                     // Status
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.blue[100],
                         borderRadius: BorderRadius.circular(12),
@@ -107,9 +120,13 @@ class ProfileScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("ชื่อ",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w500, fontSize: 16)),
+                          const Text(
+                            "ชื่อ",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 16,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           TextField(
                             readOnly: true,
@@ -118,7 +135,9 @@ class ProfileScreen extends StatelessWidget {
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(25),
                                 borderSide: BorderSide.none,
@@ -128,9 +147,13 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(height: 20),
 
                           // Last Name
-                          const Text("นามสกุล",
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w500, fontSize: 16)),
+                          const Text(
+                            "นามสกุล",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 16,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           TextField(
                             readOnly: true,
@@ -139,7 +162,9 @@ class ProfileScreen extends StatelessWidget {
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(25),
                                 borderSide: BorderSide.none,

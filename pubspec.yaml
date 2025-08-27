@@ -32,6 +32,7 @@ dependencies:
     sdk: flutter
   video_player: ^2.8.2
   intl: ^0.20.2
+  ntp: ^2.0.0
   flutter_svg: ^2.0.10
   flutter_blue_plus: ^1.34.5
   flutter_blue_plus_windows: ^1.26.1
