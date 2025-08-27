@@ -32,6 +32,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
 import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:smarttelemed_v4/core/device/connect/device_settings.dart';
 
 
 void main() async {
