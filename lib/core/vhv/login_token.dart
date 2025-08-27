@@ -257,6 +257,22 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
                     );
                   },
                 ),
+                const SizedBox(height: 16),
+                // ลิงก์ข้าม API สำหรับกรณีฉุกเฉิน
+                TextButton(
+                  onPressed: () {
+                    // ไปหน้าถัดไปเลยโดยไม่ต้องมี dialog
+                    Navigator.pushNamed(context, '/device');
+                  },
+                  child: Text(
+                    'ทดสอบ',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

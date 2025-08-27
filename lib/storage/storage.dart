@@ -196,3 +196,115 @@ class IdCardStorage {
     }
   }
 }
+
+class PatientIdCardStorage {
+  static const String boxName = 'patient_id_card_box';
+  static const String storageKey = 'patient_id_card';
+
+  static Future<void> savePatientIdCardData(Map<String, dynamic> data) async {
+    try {
+      print('💾 Saving Patient ID card to Hive: $data');
+      var box = await Hive.openBox(boxName);
+      await box.put(storageKey, data);
+      print('✅ Patient ID card saved successfully to Hive');
+    } catch (e) {
+      print('❌ Error saving Patient ID card to Hive: $e');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> loadPatientIdCardData() async {
+    try {
+      var box = await Hive.openBox(boxName);
+      final data = box.get(storageKey);
+      print('📂 Loading Patient ID card from Hive: $data');
+      if (data is Map<String, dynamic>) return data;
+      if (data != null) return Map<String, dynamic>.from(data as Map);
+      return null;
+    } catch (e) {
+      print('❌ Error loading Patient ID card from Hive: $e');
+      return null;
+    }
+  }
+
+  static Future<void> clearPatientIdCardData() async {
+    try {
+      var box = await Hive.openBox(boxName);
+      await box.delete(storageKey);
+      print('🗑️ Cleared Patient ID card data from Hive');
+    } catch (e) {
+      print('❌ Error clearing Patient ID card data from Hive: $e');
+    }
+  }
+}
+
+class VitalsStorage {
+  static const String boxName = 'vitals_box';
+  static const String storageKey = 'vitals_data';
+
+  static Future<void> saveVitalsData(Map<String, dynamic> data) async {
+    try {
+      print('💾 Saving Vitals to Hive: $data');
+      var box = await Hive.openBox(boxName);
+
+      // เพิ่ม timestamp และ ID สำหรับการส่งแต่ละครั้ง
+      final vitalsData = {
+        ...data,
+        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'timestamp': DateTime.now().toIso8601String(),
+        'submitTime': DateTime.now().toLocal().toString(),
+      };
+
+      // เก็บเป็น List เพื่อเก็บประวัติการส่งทั้งหมด
+      List<dynamic> existingData = box.get(storageKey, defaultValue: []);
+      existingData.add(vitalsData);
+
+      await box.put(storageKey, existingData);
+      print('✅ Vitals saved successfully to Hive');
+    } catch (e) {
+      print('❌ Error saving Vitals to Hive: $e');
+      rethrow;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> loadVitalsData() async {
+    try {
+      var box = await Hive.openBox(boxName);
+      final data = box.get(storageKey);
+      print('📂 Loading Vitals from Hive: $data');
+
+      if (data is List) {
+        return data
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print('❌ Error loading Vitals from Hive: $e');
+      return [];
+    }
+  }
+
+  static Future<Map<String, dynamic>?> loadLatestVitalsData() async {
+    try {
+      final allData = await loadVitalsData();
+      if (allData.isNotEmpty) {
+        return allData.last; // ข้อมูลล่าสุด
+      }
+      return null;
+    } catch (e) {
+      print('❌ Error loading latest Vitals from Hive: $e');
+      return null;
+    }
+  }
+
+  static Future<void> clearVitalsData() async {
+    try {
+      var box = await Hive.openBox(boxName);
+      await box.delete(storageKey);
+      print('🗑️ Cleared Vitals data from Hive');
+    } catch (e) {
+      print('❌ Error clearing Vitals data from Hive: $e');
+    }
+  }
+}

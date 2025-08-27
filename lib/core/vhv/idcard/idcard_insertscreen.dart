@@ -98,14 +98,14 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
               List<String> splitted = data.split('#');
               debugPrint("IDCard $data");
 
-              Fluttertoast.showToast(
-                msg: "" + data,
-                toastLength: Toast.LENGTH_SHORT, // or Toast.LENGTH_LONG
-                gravity: ToastGravity.BOTTOM, // TOP, CENTER, BOTTOM
-                backgroundColor: Colors.black54,
-                textColor: Colors.white,
-                fontSize: 16.0,
-              );
+              // Fluttertoast.showToast(
+              //   msg: "" + data,
+              //   toastLength: Toast.LENGTH_SHORT, // or Toast.LENGTH_LONG
+              //   gravity: ToastGravity.BOTTOM, // TOP, CENTER, BOTTOM
+              //   backgroundColor: Colors.black54,
+              //   textColor: Colors.white,
+              //   fontSize: 16.0,
+              // );
 
               //
               final idCard = splitted.isNotEmpty ? splitted[0] : '';
@@ -340,7 +340,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
     // trigger a single read attempt - keep loader showing
     try {
-      Fluttertoast.showToast(msg: 'เริ่มอ่านบัตร กรุณารอสักครู่');
+      // Fluttertoast.showToast(msg: 'เริ่มอ่านบัตร กรุณารอสักครู่');
       reader?.readAuto();
       // Note: loader will remain showing until stream receives data or timeout
     } catch (e) {
@@ -456,9 +456,12 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                 );
               }
 
-              // Navigate to next page
+              // Navigate to dashboard screen
               Navigator.of(context).pop(); // close dialog
-              Navigator.pushNamed(context, '/idcardloader'); // go to next page
+              Navigator.pushReplacementNamed(
+                context,
+                '/dashboard',
+              ); // go to dashboard
             } catch (e) {
               debugPrint('Error saving id card: $e');
               Fluttertoast.showToast(
@@ -756,7 +759,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
       // Find and connect to reader
       debugPrint('🔍 Finding reader...');
-      Fluttertoast.showToast(msg: 'กำลังค้นหาเครื่องอ่านบัตร...');
+      // Fluttertoast.showToast(msg: 'กำลังค้นหาเครื่องอ่านบัตร...');
 
       // Add extra delay to ensure native is fully ready
       debugPrint('⏳ Waiting for native initialization...');
@@ -784,7 +787,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
       // Start reading process with loading
       debugPrint('📖 Starting card read...');
-      Fluttertoast.showToast(msg: 'กำลังอ่านบัตร กรุณาใส่บัตรประชาชน');
+      // Fluttertoast.showToast(msg: 'กำลังอ่านบัตร กรุณาใส่บัตรประชาชน');
 
       await _handleConnectedRead();
     } catch (e) {

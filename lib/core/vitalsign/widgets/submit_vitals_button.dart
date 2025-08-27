@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
 import 'package:smarttelemed_v4/core/device/api/clinic_api.dart';
+import 'package:smarttelemed_v4/storage/storage.dart';
 
 class SubmitVitalsButton extends StatefulWidget {
   const SubmitVitalsButton({
@@ -69,6 +70,32 @@ class _SubmitVitalsButtonState extends State<SubmitVitalsButton> {
   Future<void> _submit() async {
     if (_sending) return;
     setState(() => _sending = true);
+
+    // เตรียมข้อมูล Vitals สำหรับบันทึก
+    final vitalsData = {
+      'bpSys': Vitals.I.bpSys,
+      'bpDia': Vitals.I.bpDia,
+      'pr': Vitals.I.pr,
+      'rr': Vitals.I.rr,
+      'spo2': Vitals.I.spo2,
+      'bt': Vitals.I.bt,
+      'dtx': Vitals.I.dtx,
+      'bw': Vitals.I.bw,
+      'h': Vitals.I.h,
+      'careUnitId': _careUnitId,
+      'publicId': _publicId,
+      'recepPublicId': _recepPublicId,
+      'cc': widget.cc,
+      'addHrUrl': widget.addHrUrl,
+    };
+
+    // บันทึกข้อมูลลง Storage ก่อนส่ง API
+    try {
+      await VitalsStorage.saveVitalsData(vitalsData);
+      print('✅ Vitals data saved to storage successfully');
+    } catch (e) {
+      print('❌ Error saving vitals to storage: $e');
+    }
 
     final res = await ClinicApi.addHealthRecord(
       url: widget.addHrUrl,
