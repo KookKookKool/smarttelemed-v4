@@ -6,8 +6,7 @@ import 'package:smarttelemed_v4/core/device/api/clinic_api.dart';
 class SubmitVitalsButton extends StatefulWidget {
   const SubmitVitalsButton({
     super.key,
-    this.addHrUrl =
-        'https://test.com/clinic_master/clinicApi/add_hr', // TODO: เปลี่ยนเป็น emr-life.com
+    this.addHrUrl = 'https://test.com/clinic_masterclinic_master/clinic/StmsApi/add_visit', // TODO: เปลี่ยนเป็น emr-life.com
     this.careUnitId,
     this.publicId,
     this.recepPublicId,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class ProfilePtScreen extends StatelessWidget {
@@ -12,7 +11,6 @@ class ProfilePtScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      bottomNavigationBar: const Manubar(currentIndex: 1),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  video_player: ^2.8.2
   intl: ^0.20.2
   flutter_svg: ^2.0.10
   flutter_blue_plus: ^1.34.5
@@ -82,6 +83,12 @@ flutter:
     - assets/devices/thermo.jpg
     - assets/devices/glucose.jpg
     - assets/devices/scale.png
+    #Video
+    - assets/devices/video/bp.mp4
+    - assets/devices/video/spo2.mp4
+    - assets/devices/video/thermo.mp4
+    - assets/devices/video/glucose.mp4
+    - assets/devices/video/scale.mp4
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

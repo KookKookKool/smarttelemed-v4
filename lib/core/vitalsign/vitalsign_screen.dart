@@ -11,7 +11,8 @@ import 'package:smarttelemed_v4/core/device/dashboard/device_dashboard.dart';
 // import 'package:smarttelemed_v4/core/device/widgets/connected_devices_section.dart';
 
 // ✅ หน้าอุปกรณ์เต็มหน้า (แก้ path ให้ตรงกับไฟล์ที่คุณใช้อยู่)
-import 'package:smarttelemed_v4/core/device/dashboard/devices_inline_section.dart';
+// import 'package:smarttelemed_v4/core/device/dashboard/devices_inline_section.dart';
+import 'package:smarttelemed_v4/core/device/widgets/devices_menu_section.dart';
 
 import 'package:smarttelemed_v4/core/vitalsign/widgets/submit_vitals_button.dart';
 
@@ -89,10 +90,11 @@ class VitalSignScreen extends StatelessWidget {
                         //    - จะแสดงเมื่อเชื่อมต่อและมีค่าเข้ามา (ตามที่ widget นี้จัดการ)
                         //    - เก็บค่าและค้างการ์ดตาม logic ภายในโมดูล
                         
-                        DevicesInlineSection(
-                          title: 'Devices',
-                          showHeader: true,
-                        ),
+                        // DevicesInlineSection(
+                        //   title: 'Devices',
+                        //   showHeader: true,
+                        // ),แสดงหลังเชื่อมต่อและถูกใช้งาน
+                        DevicesMenuSection(), //แสดงเป็นปุ่เพื่อเข้าชม video
                         SizedBox(height: 16), // เผื่อพื้นที่ใต้สุดสำหรับปุ่มนำทาง
                       ],
                     ),
