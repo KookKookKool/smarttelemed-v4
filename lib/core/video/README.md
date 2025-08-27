@@ -69,7 +69,7 @@ Navigator.pushNamed(context, '/videoCall');
 
 ```dart
 static const String openViduUrl = 'https://conference.pcm-life.com';
-static const String sessionName = 'Telemed_Test';
+static const String sessionName = 'Telemed-Test';
 ```
 
 ## Dependencies ที่ต้องการ

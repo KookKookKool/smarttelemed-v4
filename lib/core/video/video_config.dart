@@ -2,7 +2,7 @@
 class VideoConfig {
   // OpenVidu Configuration
   static const String openViduUrl = 'https://conference.pcm-life.com';
-  static const String sessionName = 'Telemed_Test';
+  static const String sessionName = 'Telemed-Test';
 
   // Authentication
   static const String defaultUserId = 'user';

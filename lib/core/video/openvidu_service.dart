@@ -2,11 +2,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:smarttelemed_v4/core/video/video_config.dart';
-import 'auto_login_handler.dart';
 
 class OpenViduService {
   static const String baseUrl = 'https://conference.pcm-life.com';
-  static const String sessionId = 'Telemed_Test';
+  static const String sessionId = 'Telemed-Test';
 
   // สร้าง session และ token สำหรับ OpenVidu
   static Future<String> createSession() async {
@@ -67,8 +66,7 @@ class OpenViduService {
       '$baseUrl/$sessionId',
     ).replace(queryParameters: params);
 
-    // ใช้ authenticated URL
-    return AutoLoginHandler.buildAuthenticatedUrl(uri.toString());
+    return uri.toString();
   }
 
   // ตรวจสอบสถานะการเชื่อมต่อ
