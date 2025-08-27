@@ -9,7 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:smarttelemed_v4/core/device/device_page.dart';
-import 'package:smarttelemed_v4/core/device/device_screen.dart';
+import 'package:smarttelemed_v4/core/device/dashboard/device_screen.dart';
 
 class DeviceConnectPage extends StatefulWidget {
   const DeviceConnectPage({super.key});

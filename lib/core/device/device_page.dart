@@ -9,6 +9,7 @@ import 'package:smarttelemed_v4/core/device/add_device/A&D/ua_651ble.dart';     
 import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_bp_ye680a.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_fpo_yx110.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_yhw_6.dart';
+// ใช้ตัว simple (Stream<String> mg/dL)
 import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_glucose.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_po_jpd_500f.dart';
 import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_ha120.dart';
@@ -27,53 +28,50 @@ class DevicePage extends StatefulWidget {
 }
 
 class _DevicePageState extends State<DevicePage> {
+  StreamSubscription<String>? _gluSub;
   StreamSubscription? _sub;
+  StreamSubscription<BluetoothConnectionState>? _connMon;
   Map<String, String> _latestData = {};
   String? _error;
   List<BluetoothService> _services = [];
-  
+
   JumperJpdBfs710? _bfs710;       // สำหรับ BFS-710
   BeurerBm57? _bm57;              // หากเป็น BM57 จะไม่ null
   JumperFr400? _fr400;            // FR400 thermometer
 
   // Known Services/Chars
-  // Blood Pressure
   static final Guid svcBp      = Guid('00001810-0000-1000-8000-00805f9b34fb');
   static final Guid chrBpMeas  = Guid('00002a35-0000-1000-8000-00805f9b34fb');
-  // Thermometer (มาตรฐาน)
+
   static final Guid svcThermo  = Guid('00001809-0000-1000-8000-00805f9b34fb');
   static final Guid chrTemp    = Guid('00002a1c-0000-1000-8000-00805f9b34fb');
-  // Glucose
+
   static final Guid svcGlucose = Guid('00001808-0000-1000-8000-00805f9b34fb');
-  static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb');
-  static final Guid chrGluRacp = Guid('00002a52-0000-1000-8000-00805f9b34fb');
-  // PLX (Oximeter standard)
+  static final Guid chrGluMeas = Guid('00002a18-0000-1000-8000-00805f9b34fb'); // Notify
+  static final Guid chrGluRacp = Guid('00002a52-0000-1000-8000-00805f9b34fb'); // Indicate+Write
+
   static final Guid svcPlx     = Guid('00001822-0000-1000-8000-00805f9b34fb');
   static final Guid chrPlxCont = Guid('00002a5f-0000-1000-8000-00805f9b34fb');
   static final Guid chrPlxSpot = Guid('00002a5e-0000-1000-8000-00805f9b34fb');
-  // 🔒 Jumper: ใช้ “เฉพาะ characteristic” CDEACB81
+
   static final Guid chrCde81   = Guid('cdeacb81-5235-4c07-8846-93a37ee6b86d');
-  // Yuwell-like
+
   static final Guid svcFfe0    = Guid('0000ffe0-0000-1000-8000-00805f9b34fb');
   static final Guid chrFfe4    = Guid('0000ffe4-0000-1000-8000-00805f9b34fb');
 
-  // Body Composition (มาตรฐาน) + Xiaomi proprietary (สำหรับ MIBFS)
-  static final Guid svcBody    = Guid('0000181b-0000-1000-8000-00805f9b34fb'); // Body Composition
-  static final Guid chrBodyMx  = Guid('00002a9c-0000-1000-8000-00805f9b34fb'); // Body Mass
+  static final Guid svcBody    = Guid('0000181b-0000-1000-8000-00805f9b34fb');
+  static final Guid chrBodyMx  = Guid('00002a9c-0000-1000-8000-00805f9b34fb');
 
-  // ✅ Xiaomi private (ครอบคลุมหลายล็อต)
-  static final Guid chr1530    = Guid('00001530-0000-3512-2118-0009af100700'); // weight source (prefer)
-  static final Guid chr1531    = Guid('00001531-0000-3512-2118-0009af100700'); // alt
-  static final Guid chr1532    = Guid('00001532-0000-3512-2118-0009af100700'); // kickoff
-  static final Guid chr1542    = Guid('00001542-0000-3512-2118-0009af100700'); // alt (ดี)
-  static final Guid chr1543    = Guid('00001543-0000-3512-2118-0009af100700'); // alt (มักเป็น control/ACK)
-  static final Guid chr2A2Fv   = Guid('00002a2f-0000-3512-2118-0009af100700'); // vendor alt
+  static final Guid chr1530    = Guid('00001530-0000-3512-2118-0009af100700');
+  static final Guid chr1531    = Guid('00001531-0000-3512-2118-0009af100700');
+  static final Guid chr1532    = Guid('00001532-0000-3512-2118-0009af100700');
+  static final Guid chr1542    = Guid('00001542-0000-3512-2118-0009af100700');
+  static final Guid chr1543    = Guid('00001543-0000-3512-2118-0009af100700');
+  static final Guid chr2A2Fv   = Guid('00002a2f-0000-3512-2118-0009af100700');
 
-  // BFS-710 ใช้สอง service นี้บ่อย
   static final Guid svcFfb0    = Guid('0000ffb0-0000-1000-8000-00805f9b34fb');
   static final Guid svcFee0    = Guid('0000fee0-0000-1000-8000-00805f9b34fb');
 
-  // Vendor thermometer (Jumper FR400)
   static final Guid svcFff0    = Guid('0000fff0-0000-1000-8000-00805f9b34fb');
 
   @override
@@ -85,6 +83,7 @@ class _DevicePageState extends State<DevicePage> {
   @override
   void dispose() {
     _sub?.cancel();
+    _connMon?.cancel();
     _bfs710?.stop();
     _fr400?.dispose();
     super.dispose();
@@ -93,10 +92,10 @@ class _DevicePageState extends State<DevicePage> {
   Future<void> _setupByService() async {
     try {
       _error = null;
-      setState(() {});
+      if (mounted) setState(() {});
 
-      // กัน connect ซ้อน + หยุดสแกน
       try { await FlutterBluePlus.stopScan(); } catch (_) {}
+      try { await widget.device.requestMtu(247); } catch (_) {}
 
       var st = await widget.device.connectionState.first;
       if (st == BluetoothConnectionState.disconnected) {
@@ -110,7 +109,7 @@ class _DevicePageState extends State<DevicePage> {
         }
       }
 
-      // Discover services (retry เผื่อครั้งแรกว่าง)
+      // discover
       _services = [];
       for (int i = 0; i < 3; i++) {
         _services = await widget.device.discoverServices();
@@ -118,147 +117,130 @@ class _DevicePageState extends State<DevicePage> {
         await Future.delayed(const Duration(milliseconds: 250));
       }
 
-      // ---------- เลือก parser ตาม services/characteristics (เรียงความสำคัญ) ----------
       final lowerName = widget.device.platformName.toLowerCase();
-      bool hasTail(String t) =>
-          _services.any((s){ final u=s.uuid.str.toLowerCase(); return u.endsWith(t); });
 
-      // (0) Jumper JPD-FR400 – service FFF0 (thermometer, โฆษณาตามรูป)
+      // (0) FR400 vendor thermo
       if (_hasSvc(svcFff0)) {
-        // ถ้าเครื่องนี้มี Thermometer มาตรฐานด้วย ให้ใช้มาตรฐานแทน
         final hasStdThermo = _hasSvc(svcThermo) && _hasChr(svcThermo, chrTemp);
         if (!hasStdThermo) {
           _fr400 = JumperFr400(device: widget.device);
           await _fr400!.start();
           _sub?.cancel();
           _sub = _fr400!.onTemperature.listen(
-            (c) => _onData({'temp': c.toStringAsFixed(1)}), // หน่วย °C
+            (c) => _onData({'temp': c.toStringAsFixed(1)}),
             onError: _onErr,
           );
+          _monitorDisconnect();
           return;
         }
       }
 
-      // (1) Jumper JPD-HA120 — ไม่ใช้ FFF0 เพื่อไม่ชนกับ FR400
-      if (lowerName.contains('ha120') || lowerName.contains('jpd-ha120') || hasTail('af30')) {
+      // (1) HA120
+      if (lowerName.contains('ha120') || lowerName.contains('jpd-ha120')) {
         final s = await JumperJpdHa120(device: widget.device).parse();
-        _listenMapStream(s);
-        return;
+        _listenMapStream(s); _monitorDisconnect(); return;
       }
 
-      // (2) Jumper PO/JPD ที่ล็อก chr CDEACB81
+      // (2) Jumper PO/JPD chrCDE81
       if (_hasAnyChar(chrCde81)) {
         final s = await JumperPoJpd500f(device: widget.device).parse();
-        _listenMapStream(s);
-        return;
+        _listenMapStream(s); _monitorDisconnect(); return;
       }
 
-      // (3) Mi Body Scale (MIBFS 05HM)
+      // (3) Mi Body Scale
       final hasMibfs =
-        _hasSvc(svcBody) || _hasChr(svcBody, chrBodyMx) ||
-        _hasAnyChar(chr1530) || _hasAnyChar(chr1531) ||
-        _hasAnyChar(chr1532) || _hasAnyChar(chr1542) ||
-        _hasAnyChar(chr1543) || _hasAnyChar(chr2A2Fv);
-
+          _hasSvc(svcBody) || _hasChr(svcBody, chrBodyMx) ||
+          _hasAnyChar(chr1530) || _hasAnyChar(chr1531) ||
+          _hasAnyChar(chr1532) || _hasAnyChar(chr1542) ||
+          _hasAnyChar(chr1543) || _hasAnyChar(chr2A2Fv);
       if (hasMibfs) {
-        final s = await MiBfs05hm(device: widget.device).parse(); // -> Stream<Map<String,String>>
-        _listenMapStream(s);
-        return;
+        final s = await MiBfs05hm(device: widget.device).parse();
+        _listenMapStream(s); _monitorDisconnect(); return;
       }
 
-      // (4) PLX มาตรฐาน (บางรุ่น Jumper)
+      // (4) PLX
       if (_hasSvc(svcPlx) && (_hasChr(svcPlx, chrPlxCont) || _hasChr(svcPlx, chrPlxSpot))) {
         final s = await JumperPoJpd500f(device: widget.device).parse();
-        _listenMapStream(s);
-        return;
+        _listenMapStream(s); _monitorDisconnect(); return;
       }
 
-      // (5) FFE0/FFE4 → ให้พาร์เซอร์ Yuwell จัดการ
+      // (5) FFE0/FFE4 (Yuwell oximeter)
       if (_hasSvc(svcFfe0) && _hasChr(svcFfe0, chrFfe4)) {
         final s = await YuwellFpoYx110(device: widget.device).parse();
-        _listenMapStream(s);
-        return;
+        _listenMapStream(s); _monitorDisconnect(); return;
       }
 
-      // (6) BP (A&D UA-651BLE)
+      // (6) BP standard
       if (_hasSvc(svcBp) && _hasChr(svcBp, chrBpMeas)) {
         final s = await AdUa651Ble(device: widget.device).parse();
-        _listenBpStream(s);
-        return;
+        _listenBpStream(s); _monitorDisconnect(); return;
       }
 
-      // (7) Thermometer มาตรฐาน (0x1809/0x2A1C)
+      // (7) Thermometer standard
       if (_hasSvc(svcThermo) && _hasChr(svcThermo, chrTemp)) {
         final s = await YuwellYhw6(device: widget.device).parse();
         _sub?.cancel();
         _sub = s.listen(
-          (tempC) => _onData({'temp': tempC.toStringAsFixed(2)}),
+          (t) => _onData({'temp': t.toStringAsFixed(2)}),
           onError: _onErr,
         );
+        _monitorDisconnect();
         return;
       }
 
-      // // (8) Glucose (มาตรฐาน) → ดึง “ประวัติทั้งหมด” ก่อน
-      // // (8) Glucose (มาตรฐาน) → ดึง “ประวัติทั้งหมด” หรือ “ล่าสุด” ตามต้องการ
-      // if (_hasSvc(svcGlucose) &&
-      //     _hasChr(svcGlucose, chrGluMeas) &&
-      //     _hasChr(svcGlucose, chrGluRacp)) {
-      //   final yg = YuwellGlucose(device: widget.device);
-      //   final stream = await yg.parse(fetchLastOnly: false); // false = ขอทั้งหมด / true = เอาเฉพาะล่าสุด
-      //   _listenMapStream(stream);                            // ✅ ใช้ map stream (ไม่ใช่ BP)
-      //   return;                                              // ✅ จบการจำแนกที่นี่
-      // }
+      // (8) Glucose (ใช้ตัว simple: Stream<String> mg/dL)
+      if (_hasSvc(svcGlucose) && _hasChr(svcGlucose, chrGluMeas) && _hasChr(svcGlucose, chrGluRacp)) {
+        final yg = YuwellGlucose(device: widget.device);
 
+        _sub?.cancel();
+        _sub = yg.parse(fetchLastOnly: true).listen((String mg) {
+          final mgdl = mg; // already string
+          final mmol = (double.tryParse(mgdl) ?? 0) / 18.015;
 
-      // (9) Beurer FT95 Thermometer
+          _onData({
+            'mgdl': mgdl,
+            'mmol': mmol.toStringAsFixed(1),
+          });
+        }, onError: _onErr);
+
+        _monitorDisconnect();
+        return;
+      }
+
+      // (9) Beurer FT95
       if (lowerName.contains('ft95') && _hasSvc(svcThermo) && _hasChr(svcThermo, chrTemp)) {
         final beurer = BeurerFt95(device: widget.device);
-        await beurer.connect(); // subscribe 0x2A1C ภายในคลาส
+        await beurer.connect();
         _sub?.cancel();
         _sub = beurer.onTemperature.listen(
-          (tempC) => _onData({'temp': tempC.toStringAsFixed(2)}),
+          (t) => _onData({'temp': t.toStringAsFixed(2)}),
           onError: _onErr,
         );
+        _monitorDisconnect();
         return;
       }
 
-      // (10) Beurer BM57 (เจาะจงชื่อ + BP service)
+      // (10) Beurer BM57
       if (lowerName.contains('bm57') && _hasSvc(svcBp) && _hasChr(svcBp, chrBpMeas)) {
         _bm57 = BeurerBm57(device: widget.device);
-        await _bm57!.start(); // subscribe 0x2A35/0x2A36
+        await _bm57!.start();
         _sub?.cancel();
-        _sub = _bm57!.onBloodPressure.listen(
-          (m) => _onData(m),
-          onError: _onErr,
-        );
-        return;
-      } 
-
-      // (11) Jumper BFS-710 (Body Scale) — ตรวจจาก service หรือชื่อเครื่อง
-      final looksLikeBfs = _hasSvc(svcFfb0) ||
-                           _hasSvc(svcFee0) ||
-                           lowerName.contains('bfs') ||
-                           lowerName.contains('swan');
-      if (looksLikeBfs) {
-        _bfs710 = JumperJpdBfs710(device: widget.device, enableLog: false);
-        await _bfs710!.start();
-        _sub = _bfs710!.onWeightKg.listen(
-          (kg) => _onData({'weight_kg': kg.toStringAsFixed(1)}),
-          onError: _onErr,
-        );
+        _sub = _bm57!.onBloodPressure.listen((m) => _onData(m), onError: _onErr);
+        _monitorDisconnect();
         return;
       }
 
-      // ไม่เข้าเงื่อนไขใด → แจ้งและโชว์รายการ UUID ให้ดู
       _error = 'ยังจำแนกอุปกรณ์ไม่สำเร็จ (ไม่พบ Characteristic/Service ที่รองรับ)\n'
                'ดูรายการ Service/Characteristic ด้านล่างเพื่อตรวจสอบ UUID';
-      setState(() {});
+      if (mounted) setState(() {});
     } catch (e) {
       _onErr(e);
     }
+  }
 
-    // เฝ้า disconnect
-    widget.device.connectionState.listen((s) {
+  void _monitorDisconnect() {
+    _connMon?.cancel();
+    _connMon = widget.device.connectionState.listen((s) {
       if (s == BluetoothConnectionState.disconnected && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('อุปกรณ์ตัดการเชื่อมต่อ')),
@@ -267,15 +249,33 @@ class _DevicePageState extends State<DevicePage> {
     });
   }
 
-  // ---- Helpers: ตรวจ service/char ----
-  bool _hasSvc(Guid svc) => _services.any((s) => s.uuid == svc);
+  void _startGlucose() {
+  // กันซ้อน
+  _gluSub?.cancel();
 
+  final yg = YuwellGlucose(device: widget.device);
+
+  // ดึงทั้งหมด (ย้อนหลัง) ถ้าต้องการล่าสุดอย่างเดียวเปลี่ยนเป็น true
+  _gluSub = yg.parse(fetchLastOnly: false).listen((mgStr) {
+    final mgdl = double.tryParse(mgStr) ?? 0.0;
+    final mmol = mgdl / 18.015;
+
+    _onData({
+      'mgdl': mgdl.toStringAsFixed(0),
+      'mmol': mmol.toStringAsFixed(1),
+    });
+  }, onError: (e) {
+    _onErr('GLUCOSE: $e');
+  });
+}
+
+  // helpers
+  bool _hasSvc(Guid svc) => _services.any((s) => s.uuid == svc);
   bool _hasChr(Guid svc, Guid chr) {
     final s = _services.where((x) => x.uuid == svc);
     if (s.isEmpty) return false;
     return s.first.characteristics.any((c) => c.uuid == chr);
   }
-
   bool _hasAnyChar(Guid chr) {
     for (final s in _services) {
       for (final c in s.characteristics) {
@@ -285,7 +285,6 @@ class _DevicePageState extends State<DevicePage> {
     return false;
   }
 
-  // ---- Listeners ----
   void _listenMapStream(Stream<Map<String, String>> stream) {
     _sub?.cancel();
     _sub = stream.listen(_onData, onError: _onErr, cancelOnError: false);
@@ -308,10 +307,11 @@ class _DevicePageState extends State<DevicePage> {
     }, onError: _onErr, cancelOnError: false);
   }
 
+  // merge ทับค่าเดิม ป้องกัน mgdl หายเมื่อมี RACP เด้งมา
   void _onData(Map<String, String> data) {
     if (!mounted) return;
     setState(() {
-      _latestData = data;
+      _latestData = {..._latestData, ...data};
       _error = null;
     });
   }
@@ -324,7 +324,6 @@ class _DevicePageState extends State<DevicePage> {
     );
   }
 
-  // ---- Value guards (กัน SPO2/PR เพี้ยน/สลับ) ----
   int? _asInt(String? s) => s == null ? null : int.tryParse(s.trim());
   int? _validSpo2(String? s) {
     final n = _asInt(s);
@@ -336,59 +335,39 @@ class _DevicePageState extends State<DevicePage> {
     if (n == null) return null;
     return (n >= 30 && n <= 250) ? n : null;
   }
-
-  Future<void> _showBm57Info() async {
-    if (_bm57 == null) return;
-    final info = await _bm57!.readDeviceInfo();
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Beurer BM57 – Device Info'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _kv('Model', info['model']),
-            _kv('Serial', info['serial']),
-            _kv('Firmware', info['firmware']),
-            _kv('Hardware', info['hardware']),
-            _kv('Software', info['software']),
-            _kv('Manufacturer', info['manufacturer']),
-            _kv('System ID', info['system_id']),
-            _kv('Reg Cert', info['regulatory']),
-            _kv('PnP ID', info['pnp_id']),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('ปิด')),
+Widget _glucosePanel(Map<String, String> data) {
+  final mgdl = data['mgdl'] ?? '-';
+  final mmol = data['mmol'] ?? '-';
+  return Card(
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Glucose', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('mg/dL: $mgdl'),
+          Text('mmol/L: $mmol'),
         ],
       ),
-    );
-  }
-  Widget _kv(String k, String? v) =>
-      Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('$k: ${v ?? '-'}'));
-
-  // ---- UI ----
+    ),
+  );
+}
   @override
   Widget build(BuildContext context) {
     final name = widget.device.platformName.isNotEmpty
         ? widget.device.platformName
         : widget.device.remoteId.str;
 
-    // กลูโคส (ถ้ามี)
     final mgdl = _latestData['mgdl'];
     final mmol = _latestData['mmol'];
+    final showGlu = (mgdl != null && mgdl != '0') || (mmol != null && mmol != '0.0');
 
     return Scaffold(
       appBar: AppBar(
         title: Text(name),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _setupByService,
-            tooltip: 'ลองค้นหา Service ใหม่',
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _setupByService, tooltip: 'ลองค้นหา Service ใหม่'),
           IconButton(
             icon: const Icon(Icons.link_off),
             onPressed: () async {
@@ -416,74 +395,48 @@ class _DevicePageState extends State<DevicePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ===== Glucose (เด่นสุด) =====
-                    if (mgdl != null || mmol != null) ...[
+                    if (showGlu) ...[
                       Text('${mgdl ?? '-'} mg/dL',
                           style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800)),
                       if (mmol != null)
                         Text('$mmol mmol/L', style: const TextStyle(fontSize: 18)),
-                      Row(children: [
-                        if (_latestData['seq'] != null)
-                          Text('seq: ${_latestData['seq']}   ',
-                              style: const TextStyle(fontSize: 13, color: Colors.black54)),
-                        if (_latestData['ts'] != null)
-                          Text('เวลา: ${_latestData['ts']}',
-                              style: const TextStyle(fontSize: 13, color: Colors.black54)),
-                      ]),
                       const Divider(),
                     ],
 
-                    // ===== น้ำหนัก (MiBFS) =====
                     if (_latestData['weight_kg'] != null) ...[
-                      Text(
-                        '${_latestData['weight_kg']} kg',
-                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 4),
+                      Text('${_latestData['weight_kg']} kg',
+                          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800)),
                       if (_latestData['bmi'] != null)
-                        Text('BMI: ${_latestData['bmi']}',
-                            style: const TextStyle(fontSize: 18)),
+                        Text('BMI: ${_latestData['bmi']}', style: const TextStyle(fontSize: 18)),
                       const Divider(),
                     ],
 
-                    // ===== อุณหภูมิ =====
                     if (_latestData['temp'] != null) ...[
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           const Icon(Icons.thermostat, size: 28),
                           const SizedBox(width: 8),
-                          Text(
-                            '${_latestData['temp']} °C',
-                            style: const TextStyle(
-                              fontSize: 40, fontWeight: FontWeight.w800),
-                          ),
+                          Text('${_latestData['temp']} °C',
+                              style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w800)),
                         ],
                       ),
-                      const SizedBox(height: 6),
                       const Divider(),
                     ],
 
-                    // ===== SpO2 / PR =====
                     Builder(builder: (_) {
                       final spo2Val = _validSpo2(
-                        _latestData['spo2'] ??
-                        _latestData['SpO2'] ??
-                        _latestData['SPO2'],
+                        _latestData['spo2'] ?? _latestData['SpO2'] ?? _latestData['SPO2'],
                       );
                       final prVal = _validPr(
-                        _latestData['pr'] ??
-                        _latestData['PR'] ??
-                        _latestData['pulse'],
+                        _latestData['pr'] ?? _latestData['PR'] ?? _latestData['pulse'],
                       );
-
                       if (spo2Val != null || prVal != null) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('SpO₂: ${spo2Val?.toString() ?? '-'} %',
-                                style: const TextStyle(
-                                    fontSize: 22, fontWeight: FontWeight.bold)),
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 6),
                             Text('Pulse: ${prVal?.toString() ?? '-'} bpm',
                                 style: const TextStyle(fontSize: 20)),
@@ -494,15 +447,12 @@ class _DevicePageState extends State<DevicePage> {
                       return const SizedBox.shrink();
                     }),
 
-                    // ===== คีย์อื่น ๆ ทั้งหมด (ยกเว้นที่เราจัดรูปแบบไปแล้ว) =====
                     ..._latestData.entries
                         .where((e) => !{
-                              // กันซ้ำ
                               'weight_kg','bmi','impedance_ohm',
                               'spo2','SpO2','SPO2',
                               'pr','PR','pulse',
                               'temp','temp_c',
-                              // กลูโคส + ดีบัก
                               'mgdl','mmol','seq','ts','time_offset',
                               'racp','racp_num','src','raw',
                             }.contains(e.key))
@@ -510,18 +460,6 @@ class _DevicePageState extends State<DevicePage> {
                               padding: const EdgeInsets.symmetric(vertical: 2),
                               child: Text('${e.key}: ${e.value}', style: const TextStyle(fontSize: 14)),
                             )),
-
-                    // ===== debug fields (ถ้ามี) =====
-                    if (_latestData['racp_num'] != null)
-                      Text('บันทึกในเครื่อง: ${_latestData['racp_num']} รายการ',
-                          style: const TextStyle(fontSize: 12)),
-                    if (_latestData['racp'] != null)
-                      Text('RACP: ${_latestData['racp']}',
-                          style: const TextStyle(fontSize: 12)),
-                    if (_latestData['src'] != null)
-                      Text('src: ${_latestData['src']}', style: const TextStyle(fontSize: 12)),
-                    if (_latestData['raw'] != null)
-                      Text('raw: ${_latestData['raw']}', style: const TextStyle(fontSize: 12)),
                   ],
                 ),
               ),
@@ -539,17 +477,17 @@ class _DevicePageState extends State<DevicePage> {
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
                                 child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Service: ${s.uuid.str}',
-                                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                                      const SizedBox(height: 4),
-                                      ...s.characteristics.map((c) => Text(
-                                            '  • Char: ${c.uuid.str}  '
-                                            '${c.properties.notify ? "[notify]" : ""}'
-                                            '${c.properties.indicate ? "[indicate]" : ""}',
-                                          )),
-                                    ]),
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Service: ${s.uuid.str}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    ...s.characteristics.map((c) => Text(
+                                          '  • Char: ${c.uuid.str}  '
+                                          '${c.properties.notify ? "[notify]" : ""}'
+                                          '${c.properties.indicate ? "[indicate]" : ""}',
+                                        )),
+                                  ],
+                                ),
                               ),
                             ))
                         .toList(),
