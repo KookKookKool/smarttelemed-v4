@@ -3,8 +3,8 @@ import 'package:smarttelemed_v4/style/background_2.dart';
 import 'package:smarttelemed_v4/style/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:smarttelemed_v4/core/auth/idcard_reader.dart';
+import 'package:smarttelemed_v4/core/splash/plus_loader.dart';
 import 'dart:async';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:smarttelemed_v4/storage/storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io' show Platform;
@@ -98,14 +98,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
               List<String> splitted = data.split('#');
               debugPrint("IDCard $data");
 
-              Fluttertoast.showToast(
-                msg: "" + data,
-                toastLength: Toast.LENGTH_SHORT, // or Toast.LENGTH_LONG
-                gravity: ToastGravity.BOTTOM, // TOP, CENTER, BOTTOM
-                backgroundColor: Colors.black54,
-                textColor: Colors.white,
-                fontSize: 16.0,
-              );
+              // ลบ Toast แสดงข้อมูลบัตรออก - เหลือแค่ debug log
 
               //
               final idCard = splitted.isNotEmpty ? splitted[0] : '';
@@ -152,14 +145,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                 await IdCardStorage.saveIdCardData(dataToSave);
                 debugPrint('💾 Auto-saved ID card data to storage');
 
-                // แสดง Toast แจ้งว่าบันทึกแล้ว
-                Fluttertoast.showToast(
-                  msg: '✅ บันทึกข้อมูลบัตรแล้ว',
-                  toastLength: Toast.LENGTH_SHORT,
-                  gravity: ToastGravity.CENTER,
-                  backgroundColor: Colors.green,
-                  textColor: Colors.white,
-                );
+                // ลบ Toast บันทึกข้อมูลออก - เหลือแค่ debug log
               } catch (e) {
                 debugPrint('❌ Error auto-saving ID card: $e');
               }
@@ -223,8 +209,8 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
         } else {
           // no entry stream available yet
           debugPrint('❌ No entry stream available');
-          Fluttertoast.showToast(
-            msg: 'ไม่พบการเชื่อมต่อเครื่องอ่าน โปรดกด "อ่าน" เพื่อเลือกอุปกรณ์',
+          print(
+            'Debug: ไม่พบการเชื่อมต่อเครื่องอ่าน โปรดกด "อ่าน" เพื่อเลือกอุปกรณ์',
           );
         }
         // Don't start automatic card checking - wait for user action
@@ -251,8 +237,10 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
         final ok = statuses.values.every((s) => s.isGranted);
         if (!ok) {
-          Fluttertoast.showToast(
-            msg: 'โปรดอนุญาตสิทธิ์ Bluetooth/Location ในแอป',
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('โปรดอนุญาตสิทธิ์ Bluetooth/Location ในแอป'),
+            ),
           );
           // open settings so user can allow
           openAppSettings();
@@ -262,7 +250,9 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
         // iOS: request bluetooth permission
         final status = await Permission.bluetooth.request();
         if (!status.isGranted) {
-          Fluttertoast.showToast(msg: 'โปรดอนุญาตสิทธิ์ Bluetooth ในแอป');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('โปรดอนุญาตสิทธิ์ Bluetooth ในแอป')),
+          );
           openAppSettings();
           return false;
         }
@@ -314,7 +304,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
     }
 
     if (status == null) {
-      Fluttertoast.showToast(msg: 'ไม่สามารถตรวจสอบสถานะบัตรได้');
+      print('Debug: ไม่สามารถตรวจสอบสถานะบัตรได้');
       if (mounted)
         setState(() {
           _isReading = false;
@@ -327,7 +317,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
     if (status != 1) {
       final err = reader?.checkException(status);
-      Fluttertoast.showToast(msg: 'สถานะบัตร: ${err ?? status.toString()}');
+      print('Debug: สถานะบัตร: ${err ?? status.toString()}');
       if (mounted)
         setState(() {
           _isReading = false;
@@ -340,7 +330,8 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
     // trigger a single read attempt
     try {
-      Fluttertoast.showToast(msg: 'เริ่มอ่านบัตร กรุณารอสักครู่');
+      // ลบ Toast "เริ่มอ่านบัตร" ออก - เหลือแค่ debug log
+      debugPrint('📖 Starting card read auto...');
       reader?.readAuto();
     } catch (e) {
       debugPrint('readAuto error: $e');
@@ -351,7 +342,16 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
           _loading = false;
           _isHandling = false;
         });
-      Fluttertoast.showToast(msg: 'เกิดข้อผิดพลาดในการอ่านบัตร');
+      // เปลี่ยนเป็น SnackBar แทน Toast
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('เกิดข้อผิดพลาดในการอ่านบัตร'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
       // Don't restart polling - wait for user action
       return;
     }
@@ -361,17 +361,29 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
     debugPrint('⏰ Setting 10-second timeout timer');
     _actionTimeoutTimer = Timer(const Duration(seconds: 10), () {
       debugPrint('⏰ TIMEOUT: 10 seconds elapsed without card data');
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isReading = false;
           _loading = false;
           _isHandling = false;
         });
-      Fluttertoast.showToast(
-        msg: 'ไม่พบข้อมูลบัตร โปรดลองอีกครั้ง',
-        backgroundColor: Colors.orange,
-        textColor: Colors.white,
-      );
+
+        // เปลี่ยนเป็น SnackBar แทน Toast
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('ไม่พบข้อมูลบัตร โปรดลองอีกครั้ง'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'ตกลง',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+          ),
+        );
+      }
       // Don't restart polling - wait for user action
     });
   }
@@ -445,13 +457,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                 };
                 await IdCardStorage.saveIdCardData(dataToSave);
 
-                Fluttertoast.showToast(
-                  msg: 'บันทึกข้อมูลเรียบร้อย',
-                  toastLength: Toast.LENGTH_SHORT,
-                  gravity: ToastGravity.CENTER,
-                  backgroundColor: Colors.green,
-                  textColor: Colors.white,
-                );
+                print('Debug: บันทึกข้อมูลเรียบร้อย');
               }
 
               // Navigate to next page
@@ -459,10 +465,11 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
               Navigator.pushNamed(context, '/idcardloader'); // go to next page
             } catch (e) {
               debugPrint('Error saving id card: $e');
-              Fluttertoast.showToast(
-                msg: 'เกิดข้อผิดพลาดในการบันทึก',
-                backgroundColor: Colors.red,
-                textColor: Colors.white,
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('เกิดข้อผิดพลาดในการบันทึก'),
+                  backgroundColor: Colors.red,
+                ),
               );
             }
 
@@ -509,12 +516,11 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
       final storedData = await IdCardStorage.loadIdCardData();
 
       if (storedData == null) {
-        Fluttertoast.showToast(
-          msg: 'ไม่พบข้อมูลบัตรที่บันทึกไว้',
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.CENTER,
-          backgroundColor: Colors.orange,
-          textColor: Colors.white,
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ไม่พบข้อมูลบัตรที่บันทึกไว้'),
+            backgroundColor: Colors.orange,
+          ),
         );
         return;
       }
@@ -529,12 +535,11 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
       await _showIdCardDialog(fullName, idCard, address, isFromStorage: true);
     } catch (e) {
       debugPrint('❌ Error loading stored ID card data: $e');
-      Fluttertoast.showToast(
-        msg: 'เกิดข้อผิดพลาดในการโหลดข้อมูล',
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('เกิดข้อผิดพลาดในการโหลดข้อมูล'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -637,13 +642,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                 await IdCardStorage.saveIdCardData(dataToSave);
                 debugPrint('💾 Auto-saved ID card data to storage');
 
-                Fluttertoast.showToast(
-                  msg: '✅ บันทึกข้อมูลบัตรแล้ว',
-                  toastLength: Toast.LENGTH_SHORT,
-                  gravity: ToastGravity.CENTER,
-                  backgroundColor: Colors.green,
-                  textColor: Colors.white,
-                );
+                print('Debug: บันทึกข้อมูลบัตรแล้ว');
               } catch (e) {
                 debugPrint('❌ Error auto-saving ID card: $e');
               }
@@ -675,7 +674,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
 
       // Find and connect to reader
       debugPrint('🔍 Finding reader...');
-      Fluttertoast.showToast(msg: 'กำลังค้นหาเครื่องอ่านบัตร...');
+      // ลบ Toast ออก - เหลือแค่ debug log
 
       // Add extra delay to ensure native is fully ready
       debugPrint('⏳ Waiting for native initialization...');
@@ -692,29 +691,34 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
         throw Exception('ไม่พบเครื่องอ่านบัตรหรือเชื่อมต่อไม่ได้');
       }
 
-      // Show success message
-      Fluttertoast.showToast(
-        msg: '✅ เชื่อมต่อเครื่องอ่านบัตรสำเร็จ',
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        backgroundColor: Colors.green,
-        textColor: Colors.white,
-      );
+      // ลบ Toast แสดงความสำเร็จออก - เหลือแค่ debug log
+      debugPrint('✅ Reader connected successfully');
 
       // Start reading process with loading
       debugPrint('📖 Starting card read...');
-      Fluttertoast.showToast(msg: 'กำลังอ่านบัตร กรุณาใส่บัตรประชาชน');
+      // ลบ Toast กำลังอ่านบัตรออก - เหลือแค่ debug log
 
       await _handleConnectedRead();
     } catch (e) {
       debugPrint('❌ Error in card reading: $e');
-      Fluttertoast.showToast(
-        msg: 'เกิดข้อผิดพลาด: ${e.toString()}',
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.CENTER,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-      );
+
+      // แสดงข้อผิดพลาดใน UI แทน Toast
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('เกิดข้อผิดพลาด: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'ตกลง',
+              textColor: Colors.white,
+              onPressed: () {
+                ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              },
+            ),
+          ),
+        );
+      }
 
       if (mounted) {
         setState(() {
@@ -894,49 +898,49 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                       const SizedBox(height: 24),
 
                       // ปุ่มแสดงข้อมูลล่าสุด
-                      SizedBox(
-                        width: 180,
-                        height: 41,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.blue.shade400,
-                                Colors.blue.shade600,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              elevation: 0,
-                            ),
-                            onPressed: () async {
-                              await _showStoredIdCardData();
-                            },
-                            child: const Text(
-                              'แสดงข้อมูลล่าสุด',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
+                      // SizedBox(
+                      //   width: 180,
+                      //   height: 41,
+                      //   child: DecoratedBox(
+                      //     decoration: BoxDecoration(
+                      //       gradient: LinearGradient(
+                      //         colors: [
+                      //           Colors.blue.shade400,
+                      //           Colors.blue.shade600,
+                      //         ],
+                      //       ),
+                      //       borderRadius: BorderRadius.circular(30),
+                      //       boxShadow: [
+                      //         BoxShadow(
+                      //           color: Colors.blue.withOpacity(0.2),
+                      //           blurRadius: 8,
+                      //           offset: Offset(0, 4),
+                      //         ),
+                      //       ],
+                      //     ),
+                      //     child: ElevatedButton(
+                      //       style: ElevatedButton.styleFrom(
+                      //         backgroundColor: Colors.transparent,
+                      //         shadowColor: Colors.transparent,
+                      //         shape: RoundedRectangleBorder(
+                      //           borderRadius: BorderRadius.circular(30),
+                      //         ),
+                      //         elevation: 0,
+                      //       ),
+                      //       onPressed: () async {
+                      //         await _showStoredIdCardData();
+                      //       },
+                      //       child: const Text(
+                      //         'แสดงข้อมูลล่าสุด',
+                      //         style: TextStyle(
+                      //           fontSize: 14,
+                      //           color: Colors.white,
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
+                      // const SizedBox(height: 24),
                       // text for no ID card
                       Text(
                         'ไม่มีบัตรประชาชน',
@@ -952,7 +956,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                 Positioned.fill(
                   child: Container(
                     color: Colors.black45,
-                    child: const Center(child: CircularProgressIndicator()),
+                    child: const Center(child: PlusLoader(size: 100.0)),
                   ),
                 ),
             ],
