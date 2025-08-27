@@ -12,7 +12,6 @@ class DeviceSession {
   });
 
   final BluetoothDevice device;
-  // แก้ให้ไม่ต้องพึ่ง flutter foundation
   final void Function() onUpdate;
   final void Function(Object error) onError;
   final Future<void> Function() onDisconnected;
@@ -35,9 +34,9 @@ class DeviceSession {
     m.forEach((k, v) {
       if (v == null) return;
       if (v is num) {
-        out[k] = v.toString();
+        out[k.toString()] = v.toString();
       } else {
-        out[k] = v.toString();
+        out[k.toString()] = v.toString();
       }
     });
     if (out.containsKey('mgdL')) out['mgdl'] = out['mgdL']!;
@@ -45,10 +44,12 @@ class DeviceSession {
     if (out.containsKey('timestamp')) out['ts'] = out['timestamp']!;
     try {
       if (out['mgdl'] != null) {
-        final v = double.tryParse(out['mgdl']!); if (v != null) out['mgdl'] = v.toStringAsFixed(0);
+        final v = double.tryParse(out['mgdl']!);
+        if (v != null) out['mgdl'] = v.toStringAsFixed(0);
       }
       if (out['mmol'] != null) {
-        final v = double.tryParse(out['mmol']!); if (v != null) out['mmol'] = v.toStringAsFixed(1);
+        final v = double.tryParse(out['mmol']!);
+        if (v != null) out['mmol'] = v.toStringAsFixed(1);
       }
     } catch (_) {}
     return out;
@@ -97,10 +98,11 @@ class DeviceSession {
       gluAll   = binding.onAll;
       gluCount = binding.onCount;
 
+      // CHANGED: mapStream เป็น Stream<Map> → normalize ก่อนอัปเดต
       _dataSub = binding.mapStream?.listen((m) {
         final nm = _normalizeData(m);
 
-        // Anti-°C guard (robust)
+        // Guard °C จาก oximeter
         final src = (nm['src'] ?? '').toLowerCase();
         final looksLikeOxi =
             nm.containsKey('spo2') || nm.containsKey('SpO2') || nm.containsKey('SPO2') ||
@@ -112,7 +114,7 @@ class DeviceSession {
           latestData.remove('temperature');
         }
 
-        latestData = { ...latestData, ...nm };
+        latestData = {...latestData, ...nm};
         error = null;
         onUpdate();
       }, onError: (e) {
@@ -121,6 +123,7 @@ class DeviceSession {
         onUpdate();
       });
 
+      // fallback streams (bp / temp)
       _dataSub ??= binding.bpStream?.listen((bp) {
         latestData = {
           'sys': bp.systolic.toStringAsFixed(0),

@@ -1,5 +1,6 @@
 // lib/core/device/device_setting.dart
 import 'dart:async';
+import 'dart:convert'; // สำหรับเก็บ/อ่าน alias & name map
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
@@ -22,7 +23,7 @@ class _DeviceSettingPageState extends State<DeviceSettingPage> {
 
   // ---------- Discovered ----------
   final Map<String, BluetoothDevice> _devices = {};
-  final Map<String, String> _names = {};
+  final Map<String, String> _names = {}; // ชื่อที่สแกนเจอ "ตอนนี้"
   final Map<String, DateTime> _lastSeen = {};
   final Map<String, StreamSubscription<BluetoothConnectionState>> _connSubs = {};
   final Set<String> _connected = {};
@@ -40,8 +41,15 @@ class _DeviceSettingPageState extends State<DeviceSettingPage> {
   @override
   void initState() {
     super.initState();
-    _loadInstalledIds();
-    _requestPerms().then((_) => _startScan());
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    await DeviceAlias.I.ensure(); // โหลด alias
+    await DeviceNames.I.ensure(); // โหลด "ชื่อเดิม" ที่เคยบันทึก
+    await _loadInstalledIds();
+    await _requestPerms();
+    _startScan();
     _autoPrune = Timer.periodic(const Duration(seconds: 6), (_) => _pruneOffline());
   }
 
@@ -82,7 +90,13 @@ class _DeviceSettingPageState extends State<DeviceSettingPage> {
   }
 
   Future<void> _addInstalled(String id) async {
-    if (_installedIds.add(id)) {
+    final added = _installedIds.add(id);
+    if (added) {
+      // บันทึกชื่อเดิม ณ เวลาที่เพิ่ม (ถ้ามี)
+      final currentName = _names[id];
+      if (_validName(currentName)) {
+        await DeviceNames.I.set(id, currentName!.trim());
+      }
       await _saveInstalledIds();
       if (mounted) {
         setState(() {});
@@ -108,23 +122,52 @@ class _DeviceSettingPageState extends State<DeviceSettingPage> {
     }
   }
 
+  // ---------- Utils ----------
+  bool _validName(String? s) =>
+      s != null && s.trim().isNotEmpty && s.trim().toLowerCase() != 'unknown';
+
+  // คืน “ชื่อที่จะแสดง” สำหรับ Installed: alias > ชื่อเดิมที่เคยบันทึก > ชื่อที่สแกนเจอ > id
+  String _installedDisplayName(String id) {
+    final alias = DeviceAlias.I.get(id);
+    if (_validName(alias)) return alias!.trim();
+
+    final saved = DeviceNames.I.get(id);
+    if (_validName(saved)) return saved!.trim();
+
+    final scanned = _names[id];
+    if (_validName(scanned)) return scanned!.trim();
+
+    return id; // fallback ให้เห็น id ถ้ายังไม่เคยรู้ชื่อ
+  }
+
   // ---------- Scan ----------
   void _startScan() async {
     await _scanSub?.cancel();
     await _scanFlagSub?.cancel();
 
-    _scanSub = FlutterBluePlus.scanResults.listen((results) {
+    _scanSub = FlutterBluePlus.scanResults.listen((results) async {
       final now = DateTime.now();
       for (final r in results) {
         final id = r.device.remoteId.str;
 
+        // ใช้ “ชื่อเดิมจากอุปกรณ์” เท่านั้นในการแสดงรายการที่พบ
+        final fromPlatform = r.device.platformName;
+        final fromAdv = r.advertisementData.advName;
+        final candidate = (fromPlatform.isNotEmpty ? fromPlatform : fromAdv).trim();
+
+        if (!_validName(candidate)) {
+          // ไม่มีชื่อจริง → ไม่ขึ้นในรายการ "ที่พบ"
+          continue;
+        }
+
         _devices[id] = r.device;
-        _names[id] = r.device.platformName.isNotEmpty
-            ? r.device.platformName
-            : (r.advertisementData.advName.isNotEmpty
-                ? r.advertisementData.advName
-                : 'Unknown');
+        _names[id] = candidate;
         _lastSeen[id] = now;
+
+        // ถ้าอุปกรณ์นี้เป็น Installed อยู่แล้ว อัปเดต "ชื่อเดิม" ให้สดใหม่
+        if (_installedIds.contains(id)) {
+          await DeviceNames.I.set(id, candidate);
+        }
 
         _watchDevice(r.device);
       }
@@ -189,6 +232,10 @@ class _DeviceSettingPageState extends State<DeviceSettingPage> {
   List<String> get _visibleDiscovered {
     final now = DateTime.now();
     final ids = _devices.keys.where((id) {
+      // แสดงเฉพาะที่ “มีชื่อจริง” เท่านั้น
+      final name = _names[id];
+      if (!_validName(name)) return false;
+
       final seen = _lastSeen[id];
       final connected = _connected.contains(id);
       final online = connected || (seen != null && now.difference(seen) <= _retain);
@@ -204,15 +251,67 @@ class _DeviceSettingPageState extends State<DeviceSettingPage> {
       final tb = _lastSeen[b]?.millisecondsSinceEpoch ?? 0;
       if (ta != tb) return tb.compareTo(ta);
 
-      return (_names[a] ?? a).compareTo(_names[b] ?? b);
+      // เรียงตามชื่อเดิมที่สแกนเจอ (ไม่ใช่ alias)
+      final da = _names[a]!;
+      final db = _names[b]!;
+      return da.compareTo(db);
     });
     return ids;
+  }
+
+  // ---------- Rename UI (เฉพาะ Installed) ----------
+  Future<void> _promptRename(String id) async {
+    final current = DeviceAlias.I.get(id) ?? DeviceNames.I.get(id) ?? _names[id] ?? '';
+    final ctl = TextEditingController(text: current);
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('ตั้งชื่ออุปกรณ์'),
+        content: TextField(
+          controller: ctl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'ชื่อที่จะแสดง',
+            hintText: 'เช่น เครื่องวัดความดันคุณพ่อ',
+          ),
+          onSubmitted: (v) => Navigator.pop(context, v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('ยกเลิก'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, ''),
+            child: const Text('ล้างชื่อ'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context, ctl.text.trim()),
+            icon: const Icon(Icons.save),
+            label: const Text('บันทึก'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    // result == '' => ล้าง alias
+    await DeviceAlias.I.set(id, result.isEmpty ? null : result);
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result.isEmpty ? 'ล้างชื่อเรียบร้อย' : 'บันทึกชื่อเรียบร้อย')),
+    );
   }
 
   // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
     final discovered = _visibleDiscovered;
+
+    // Installed: แสดงทุกตัว (เพราะต้อง “เห็นชื่อเดิมก่อน” → alias > savedName > scannedName > id)
+    final installedList = _installedIds.toList()
+      ..sort((a, b) => _installedDisplayName(a).compareTo(_installedDisplayName(b)));
 
     return Scaffold(
       appBar: AppBar(
@@ -239,20 +338,26 @@ class _DeviceSettingPageState extends State<DeviceSettingPage> {
           const Text('อุปกรณ์ที่บันทึกไว้ถาวร',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
-          if (_installedIds.isEmpty)
+          if (installedList.isEmpty)
             _cardPadding(const Text('ยังไม่มีอุปกรณ์ที่บันทึกไว้'))
           else
-            ...(_installedIds.toList()..sort()).map((id) {
-              final name = _names[id] ?? 'Unknown';
+            ...installedList.map((id) {
+              final nameToShow = _installedDisplayName(id);
               final connected = _connected.contains(id);
               return Card(
                 child: ListTile(
                   leading: const Icon(Icons.memory),
-                  title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: Text(nameToShow, maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: Text(id, style: const TextStyle(fontSize: 12)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      IconButton(
+                        tooltip: 'แก้ไขชื่อ',
+                        icon: const Icon(Icons.edit),
+                        onPressed: () => _promptRename(id),
+                      ),
+                      const SizedBox(width: 4),
                       _stateChip(
                         connected ? 'Connected' : 'Saved',
                         connected ? Colors.green : Colors.blueGrey,
@@ -292,20 +397,22 @@ class _DeviceSettingPageState extends State<DeviceSettingPage> {
           ),
           const SizedBox(height: 8),
           if (discovered.isEmpty)
-            _cardPadding(const Text('ยังไม่พบอุปกรณ์ใกล้เคียง — กดปุ่มสแกนที่มุมขวาบน'))
+            _cardPadding(const Text('ยังไม่พบอุปกรณ์ที่มีชื่อ — กดปุ่มสแกนที่มุมขวาบน'))
           else
             ...discovered.map((id) {
-              final name = _names[id] ?? 'Unknown';
               final connected = _connected.contains(id);
               final installed = _installedIds.contains(id);
+              final nameToShow = _names[id]!.trim(); // แสดง “ชื่อเดิมจากอุปกรณ์” เท่านั้น
+
               return Card(
                 child: ListTile(
                   leading: const Icon(Icons.bluetooth_searching),
-                  title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: Text(nameToShow, maxLines: 1, overflow: TextOverflow.ellipsis),
                   subtitle: Text(id, style: const TextStyle(fontSize: 12)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // ❌ ไม่มีปุ่มแก้ไขชื่อในรายการที่พบ (ให้แก้ได้หลังบันทึก)
                       _stateChip(
                         connected ? 'Connected' : 'Online',
                         connected ? Colors.green : Colors.orange,
@@ -382,5 +489,85 @@ class _DeviceSettingPageState extends State<DeviceSettingPage> {
     }
     await _addInstalled(id);
     _manualCtl.clear();
+  }
+}
+
+/// ─────────────────────────────────────────────────────────
+/// DeviceAlias: เก็บ/อ่านชื่อ (Alias) ของอุปกรณ์แต่ละตัวแบบถาวร
+/// ─────────────────────────────────────────────────────────
+class DeviceAlias {
+  DeviceAlias._();
+  static final DeviceAlias I = DeviceAlias._();
+
+  static const _k = 'device_aliases';
+  Map<String, String> _m = {};
+  bool _ready = false;
+
+  Future<void> ensure() async {
+    if (_ready) return;
+    final p = await SharedPreferences.getInstance();
+    final s = p.getString(_k);
+    if (s != null && s.isNotEmpty) {
+      try {
+        final map = json.decode(s);
+        if (map is Map) {
+          _m = map.map((k, v) => MapEntry(k.toString(), v.toString()));
+        }
+      } catch (_) { /* ignore parse errors */ }
+    }
+    _ready = true;
+  }
+
+  String? get(String id) => _m[id];
+
+  Future<void> set(String id, String? alias) async {
+    await ensure();
+    final a = alias?.trim() ?? '';
+    if (a.isEmpty) {
+      _m.remove(id);
+    } else {
+      _m[id] = a;
+    }
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_k, json.encode(_m));
+  }
+}
+
+/// ─────────────────────────────────────────────────────────
+/// DeviceNames: เก็บ “ชื่อเดิมจากอุปกรณ์” (จำครั้งที่บันทึกหรือครั้งล่าสุดที่เห็น)
+/// ใช้เป็น fallback เมื่อยังไม่มี alias
+/// ─────────────────────────────────────────────────────────
+class DeviceNames {
+  DeviceNames._();
+  static final DeviceNames I = DeviceNames._();
+
+  static const _k = 'device_names';
+  Map<String, String> _m = {};
+  bool _ready = false;
+
+  Future<void> ensure() async {
+    if (_ready) return;
+    final p = await SharedPreferences.getInstance();
+    final s = p.getString(_k);
+    if (s != null && s.isNotEmpty) {
+      try {
+        final map = json.decode(s);
+        if (map is Map) {
+          _m = map.map((k, v) => MapEntry(k.toString(), v.toString()));
+        }
+      } catch (_) { /* ignore parse errors */ }
+    }
+    _ready = true;
+  }
+
+  String? get(String id) => _m[id];
+
+  Future<void> set(String id, String? name) async {
+    await ensure();
+    final n = name?.trim() ?? '';
+    if (n.isEmpty) return;
+    _m[id] = n;
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_k, json.encode(_m));
   }
 }
