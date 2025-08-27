@@ -10,10 +10,12 @@ import 'package:smarttelemed_v4/core/vhv/idcard/idcard_insertscreen.dart';
 import 'package:smarttelemed_v4/core/vhv/idcard/idcard_loader.dart';
 import 'package:smarttelemed_v4/core/vhv/dashboard_screen.dart';
 import 'package:smarttelemed_v4/core/vhv/profile_screen.dart';
+
 import 'package:smarttelemed_v4/pt/idcard/idcard_pt_insertscreen.dart';
 import 'package:smarttelemed_v4/pt/idcard/idcard_pt_loader.dart';
 import 'package:smarttelemed_v4/pt/profilept_screen.dart';
 import 'package:smarttelemed_v4/pt/mainpt_screen.dart';
+
 import 'package:smarttelemed_v4/core/appoint/appoint_screen.dart';
 import 'package:smarttelemed_v4/core/doctor/doctor_screen.dart';
 import 'package:smarttelemed_v4/core/appoint/appoint_table.dart';

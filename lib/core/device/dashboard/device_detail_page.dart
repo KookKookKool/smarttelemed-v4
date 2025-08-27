@@ -1,3 +1,4 @@
+// lib/core/device/dashboard/device_detail_page.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
@@ -5,12 +6,10 @@ import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 import 'package:smarttelemed_v4/core/device/session/device_session.dart';
 import 'package:smarttelemed_v4/core/device/session/pick_parser.dart';
+import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
 
 class DeviceDetailPage extends StatefulWidget {
-  /// ใช้แบบส่ง session มาเลย (เร็วสุด)
   const DeviceDetailPage.session(this.session, {super.key}) : deviceId = null;
-
-  /// ใช้แบบส่ง deviceId (remoteId.str) อย่างเดียว
   const DeviceDetailPage.byId(this.deviceId, {super.key}) : session = null;
 
   final DeviceSession? session;
@@ -22,7 +21,9 @@ class DeviceDetailPage extends StatefulWidget {
 
 class _DeviceDetailPageState extends State<DeviceDetailPage> {
   DeviceSession? _session;
+  bool _ownedSession = false; // เราสร้างเองหรือยืมจาก Hub
   StreamSubscription? _tick;
+  VoidCallback? _hubListenCancel;
 
   @override
   void initState() {
@@ -31,41 +32,65 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   }
 
   Future<void> _bootstrap() async {
+    // 1) ถ้าส่ง session มาโดยตรง → ใช้เลย
     if (widget.session != null) {
       _session = widget.session;
     } else {
       final id = widget.deviceId!;
-      final connected = await FlutterBluePlus.connectedDevices;
-      BluetoothDevice dev = connected.firstWhere(
-        (d) => d.remoteId.str == id,
-        orElse: () => BluetoothDevice.fromId(id),
-      );
-      final st = await dev.connectionState.first;
-      if (st != BluetoothConnectionState.connected) {
-        try { await dev.connect(autoConnect: false, timeout: const Duration(seconds: 12)); } catch (_) {}
-      }
+      // 2) ลองยืม session จาก Hub ก่อน
+      final fromHub = DeviceHub.I.sessionById(id);
+      if (fromHub != null) {
+        _session = fromHub;
+      } else {
+        // 3) ไม่มีใน Hub → สร้าง session ชั่วคราวเอง
+        final connected = await FlutterBluePlus.connectedDevices;
+        BluetoothDevice dev = connected.firstWhere(
+          (d) => d.remoteId.str == id,
+          orElse: () => BluetoothDevice.fromId(id),
+        );
+        final st = await dev.connectionState.first;
+        if (st != BluetoothConnectionState.connected) {
+          try { await dev.connect(autoConnect: false, timeout: const Duration(seconds: 12)); } catch (_) {}
+        }
 
-      final s = DeviceSession(
-        device: dev,
-        onUpdate: () => mounted ? setState(() {}) : null,
-        onError: (_) => mounted ? setState(() {}) : null,
-        onDisconnected: () async { if (mounted) setState(() {}); },
-      );
-      await s.start(pickParser: pickParser);
-      _session = s;
+        final s = DeviceSession(
+          device: dev,
+          onUpdate: () => mounted ? setState(() {}) : null,
+          onError: (_) => mounted ? setState(() {}) : null,
+          onDisconnected: () async { if (mounted) setState(() {}); },
+        );
+        await s.start(pickParser: pickParser);
+        _session = s;
+        _ownedSession = true;
+      }
     }
 
-    // ให้ตัวเลขวิ่งตามจริงแม้ onUpdate ไม่เด้งเข้าหน้านี้
+    // ฟัง Hub เพื่อรีเฟรช UI เมื่อค่าข้างในขยับ (กรณีใช้ session จาก Hub)
+    _hubListenCancel = () {
+      // detach
+      DeviceHub.I.removeListener(_onHubChanged);
+    };
+    DeviceHub.I.addListener(_onHubChanged);
+
+    // กันกรณี onUpdate ไม่ทันเด้ง
     _tick = Stream.periodic(const Duration(milliseconds: 500)).listen((_) {
       if (mounted) setState(() {});
     });
+
     if (mounted) setState(() {});
+  }
+
+  void _onHubChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
   void dispose() {
     _tick?.cancel();
-    if (widget.session == null) {
+    _hubListenCancel?.call();
+    // ถ้า session เราสร้างเอง → ปิดให้
+    if (_ownedSession) {
       _session?.dispose();
     }
     super.dispose();
@@ -78,7 +103,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   String _deviceTitle(DeviceSession s) =>
       s.device.platformName.isNotEmpty ? s.device.platformName : s.device.remoteId.str;
 
-  // ชนิดอุปกรณ์จากข้อมูลล่าสุด
   _Kind _kind(Map<String, String> m, String name) {
     final n = name.toLowerCase();
     if ((m['sys'] ?? m['systolic']) != null && (m['dia'] ?? m['diastolic']) != null) return _Kind.bp;
@@ -107,16 +131,15 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
       case _Kind.temp: return 'assets/devices/thermo.png';
       case _Kind.glucose: return 'assets/devices/glucose.png';
       case _Kind.scale: return 'assets/devices/scale.png';
-      case _Kind.unknown: return 'assets/devices/unknown.png'; // ใส่ไฟล์ placeholder ได้
+      case _Kind.unknown: return 'assets/devices/unknown.png';
     }
   }
 
-  // BP heuristic status
   String _bpStatus(int? sys, int? dia) {
     if (sys == null || dia == null) return '—';
     if (sys < 120 && dia < 80) return 'ความดันเหมาะสม';
     if (sys < 140 && dia < 90) return 'ความดันปกติ';
-    if (sys < 160 || dia < 100) return 'ความดันสูง';
+    if (sys < 140 || dia < 100) return 'ความดันสูง';
     return 'ความดันสูงมาก';
   }
 
@@ -164,7 +187,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     final m = s.latestData;
     final kind = _kind(m, s.device.platformName);
 
-    // ส่วนหัว
     final header = Padding(
       padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
       child: Row(
@@ -185,7 +207,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
       ),
     );
 
-    // รูปอุปกรณ์
     final hero = Padding(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
       child: Container(
@@ -208,7 +229,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
       ),
     );
 
-    // ชื่อ/รุ่น
     final title = Center(
       child: Column(
         children: [
@@ -225,7 +245,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
       ),
     );
 
-    // เนื้อหาเฉพาะชนิดอุปกรณ์
     Widget body;
     switch (kind) {
       case _Kind.bp:
@@ -244,7 +263,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
         break;
 
       case _Kind.temp:
-        // รองรับทั้ง temp_c/temp/temp_f
         final tC = _toDouble(m['temp_c'] ?? m['temp'] ?? m['temperature']);
         final tF = _toDouble(m['temp_f']);
         body = _tempSection(tC: tC, tF: tF);
@@ -276,7 +294,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
       children: [
         header,
         hero,
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         title,
         const SizedBox(height: 12),
         body,
@@ -290,7 +308,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     return Column(
       children: [
         const SizedBox(height: 6),
-        // สถานะ + คำแนะนำ (ตามภาพ)
         Center(
           child: Column(
             children: [
@@ -312,23 +329,21 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
           ),
         ),
         const SizedBox(height: 24),
-        // BP
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: _rowValue(
             leftLabel: 'BP',
             main: _bpMain(sys, dia),
-            tail: const Text('mmHg', style: TextStyle(fontSize: 16, color: Colors.black87)),
+            tail: const Text('mmHg', style: TextStyle(fontSize: 14, color: Colors.black87)),
           ),
         ),
         const SizedBox(height: 18),
-        // PR
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: _rowValue(
             leftLabel: 'PR',
             main: _monoValue(pr),
-            tail: const Text('bpm', style: TextStyle(fontSize: 16, color: Colors.black87)),
+            tail: const Text('bpm', style: TextStyle(fontSize: 14, color: Colors.black87)),
           ),
         ),
       ],
@@ -344,13 +359,13 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
           _rowValue(
             leftLabel: 'SpO₂',
             main: _monoValue(spo2),
-            tail: const Text('%', style: TextStyle(fontSize: 16, color: Colors.black87)),
+            tail: const Text('%', style: TextStyle(fontSize: 14, color: Colors.black87)),
           ),
           const SizedBox(height: 18),
           _rowValue(
             leftLabel: 'PR',
             main: _monoValue(pr),
-            tail: const Text('bpm', style: TextStyle(fontSize: 16, color: Colors.black87)),
+            tail: const Text('bpm', style: TextStyle(fontSize: 14, color: Colors.black87)),
           ),
         ],
       ),
@@ -358,7 +373,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   }
 
   Widget _tempSection({double? tC, double? tF}) {
-    // แปลงเป็น C ถ้าให้มาเฉพาะ F
     final showC = tC ?? (tF != null ? (tF - 32) * 5 / 9 : null);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -368,14 +382,14 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
           _rowValue(
             leftLabel: 'Temp',
             main: _monoValue(showC?.toStringAsFixed(1)),
-            tail: const Text('°C', style: TextStyle(fontSize: 16, color: Colors.black87)),
+            tail: const Text('°C', style: TextStyle(fontSize: 14, color: Colors.black87)),
           ),
           if (tF != null) ...[
             const SizedBox(height: 12),
             _rowValue(
               leftLabel: '',
               main: _monoValue(tF.toStringAsFixed(1)),
-              tail: const Text('°F', style: TextStyle(fontSize: 16, color: Colors.black87)),
+              tail: const Text('°F', style: TextStyle(fontSize: 14, color: Colors.black87)),
             ),
           ],
         ],
@@ -393,14 +407,14 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
           _rowValue(
             leftLabel: 'Glu',
             main: _monoValue(mgdl?.toStringAsFixed(0)),
-            tail: const Text('mg/dL', style: TextStyle(fontSize: 16, color: Colors.black87)),
+            tail: const Text('mg/dL', style: TextStyle(fontSize: 14, color: Colors.black87)),
           ),
           if (mmol != null) ...[
             const SizedBox(height: 12),
             _rowValue(
               leftLabel: '',
               main: _monoValue(mmol.toStringAsFixed(1)),
-              tail: const Text('mmol/L', style: TextStyle(fontSize: 16, color: Colors.black87)),
+              tail: const Text('mmol/L', style: TextStyle(fontSize: 14, color: Colors.black87)),
             ),
           ],
           if (when != null && when.isNotEmpty) ...[
@@ -421,7 +435,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
           _rowValue(
             leftLabel: 'Weight',
             main: _monoValue(weightKg?.toStringAsFixed(1)),
-            tail: const Text('kg', style: TextStyle(fontSize: 16, color: Colors.black87)),
+            tail: const Text('kg', style: TextStyle(fontSize: 14, color: Colors.black87)),
           ),
           if (bmi != null) ...[
             const SizedBox(height: 12),
@@ -476,7 +490,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   Widget _monoValue(dynamic v) =>
       Center(child: _underNumber(v == null ? '--' : v.toString()));
 
-  /// กล่องตัวเลขมีเส้นใต้
   Widget _underNumber(String s) {
     return Column(
       mainAxisSize: MainAxisSize.min,

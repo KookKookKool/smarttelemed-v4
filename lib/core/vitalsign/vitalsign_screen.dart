@@ -92,7 +92,6 @@ class VitalSignScreen extends StatelessWidget {
                         DevicesInlineSection(
                           title: 'Devices',
                           showHeader: true,
-                          showSpinner: true,
                         ),
                         SizedBox(height: 16), // เผื่อพื้นที่ใต้สุดสำหรับปุ่มนำทาง
                       ],
