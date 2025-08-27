@@ -153,7 +153,12 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
               // Show confirm dialog to user
               if (mounted) {
                 debugPrint('🎬 Showing dialog...');
-                await _showIdCardDialog(fullName, idCard, address);
+                await _showIdCardDialog(
+                  fullName,
+                  idCard,
+                  address,
+                  dataSource: 'card_reader',
+                );
                 debugPrint('✅ Dialog completed');
               } else {
                 _isHandling = false;
@@ -419,6 +424,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
     String idCard,
     String address, {
     bool isFromStorage = false,
+    String? dataSource,
   }) async {
     debugPrint('🎭 _showIdCardDialog called with:');
     debugPrint('   fullName: "$fullName"');
@@ -440,6 +446,7 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
           idCard: idCard,
           address: address,
           isFromStorage: isFromStorage,
+          dataSource: dataSource,
           onConfirm: () async {
             try {
               // Cancel any remaining timers
@@ -509,6 +516,92 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
     }
   }
 
+  // ฟังก์ชันใช้ข้อมูลจำลอง
+  Future<void> _useMockData() async {
+    try {
+      debugPrint('🎭 Using mock ID card data...');
+
+      // Mock data สำหรับทดสอบ - มีหลายชุดให้เลือกแบบสุ่ม
+      final List<Map<String, String>> mockDataList = [
+        {
+          'fullName': 'นาย ทดสอบ ระบบ',
+          'idCard': '1234567890123',
+          'address': '123/45 หมู่ที่ 6 ตำบลตัวอย่าง อำเภอทดสอบ จังหวัดตัวอย่าง',
+        },
+        {
+          'fullName': 'นางสาว จำลอง ข้อมูล',
+          'idCard': '9876543210987',
+          'address': '789/12 หมู่ที่ 3 ตำบลจำลอง อำเภอข้อมูล จังหวัดทดสอบ',
+        },
+        {
+          'fullName': 'นาง ตัวอย่าง ใช้งาน',
+          'idCard': '5555666677778',
+          'address': '456/78 หมู่ที่ 9 ตำบลใช้งาน อำเภอตัวอย่าง จังหวัดระบบ',
+        },
+      ];
+
+      // เลือกข้อมูลแบบสุ่ม
+      final randomIndex = DateTime.now().millisecond % mockDataList.length;
+      final selectedMockData = mockDataList[randomIndex];
+
+      final mockFullName = selectedMockData['fullName']!;
+      final mockIdCard = selectedMockData['idCard']!;
+      final mockAddress = selectedMockData['address']!;
+
+      // บันทึกข้อมูล Mock
+      final mockDataToSave = {
+        'fullName': mockFullName,
+        'idCard': mockIdCard,
+        'address': mockAddress,
+        'timestamp': DateTime.now().toIso8601String(),
+        'source': 'mock_data', // ระบุว่าเป็นข้อมูลจำลอง
+      };
+
+      await IdCardStorage.saveIdCardData(mockDataToSave);
+      debugPrint('💾 Saved mock ID card data to storage: $mockFullName');
+
+      // แสดง SnackBar แจ้งเตือน
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.science, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text('ใช้ข้อมูลจำลองสำหรับทดสอบ: $mockFullName'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+
+      // แสดง Dialog ข้อมูลจำลอง
+      if (mounted) {
+        await _showIdCardDialog(
+          mockFullName,
+          mockIdCard,
+          mockAddress,
+          isFromStorage: false,
+          dataSource: 'mock_data',
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error using mock data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('เกิดข้อผิดพลาดในการใช้ข้อมูลจำลอง'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   // ฟังก์ชันแสดงข้อมูลบัตรที่บันทึกไว้แล้ว
   Future<void> _showStoredIdCardData() async {
     try {
@@ -528,11 +621,18 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
       final fullName = storedData['fullName'] ?? 'ไม่มีข้อมูล';
       final idCard = storedData['idCard'] ?? 'ไม่มีข้อมูล';
       final address = storedData['address'] ?? 'ไม่มีข้อมูล';
+      final source = storedData['source'] ?? 'unknown';
 
       debugPrint('📄 Showing stored data: $fullName, $idCard');
 
       // แสดง Dialog จากข้อมูลที่บันทึกไว้ (ข้อมูลจาก storage)
-      await _showIdCardDialog(fullName, idCard, address, isFromStorage: true);
+      await _showIdCardDialog(
+        fullName,
+        idCard,
+        address,
+        isFromStorage: true,
+        dataSource: source,
+      );
     } catch (e) {
       debugPrint('❌ Error loading stored ID card data: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -941,10 +1041,67 @@ class _IdCardInsertScreenState extends State<IdCardInsertScreen> {
                       //   ),
                       // ),
                       // const SizedBox(height: 24),
-                      // text for no ID card
-                      Text(
-                        'ไม่มีบัตรประชาชน',
-                        style: TextStyle(fontSize: 16, color: Colors.black),
+
+                      // ปุ่มใช้ข้อมูลจำลอง
+                      SizedBox(
+                        width: 180,
+                        height: 41,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.orange.shade400,
+                                Colors.orange.shade600,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(30),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.orange.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: () async {
+                              await _useMockData();
+                            },
+                            child: const Text(
+                              'ใช้ข้อมูลจำลอง',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // text for no ID card - เปลี่ยนเป็น TextButton ที่คลิกได้
+                      TextButton(
+                        onPressed: () async {
+                          await _useMockData();
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.blue.shade600,
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                        child: const Text(
+                          'ไม่มีบัตรประชาชน (คลิกเพื่อใช้ข้อมูลจำลอง)',
+                        ),
                       ),
                       const SizedBox(height: 20),
                     ],
@@ -974,6 +1131,7 @@ class IdCardInfoDialog extends StatelessWidget {
   final VoidCallback onConfirm;
   final VoidCallback onCancel;
   final bool isFromStorage;
+  final String? dataSource; // เพิ่มฟิลด์สำหรับระบุแหล่งข้อมูล
 
   const IdCardInfoDialog({
     Key? key,
@@ -983,6 +1141,7 @@ class IdCardInfoDialog extends StatelessWidget {
     required this.onConfirm,
     required this.onCancel,
     this.isFromStorage = false,
+    this.dataSource,
   }) : super(key: key);
 
   @override
@@ -1001,6 +1160,33 @@ class IdCardInfoDialog extends StatelessWidget {
             'ข้อมูลบัตรประชาชน',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
+          // แสดงสถานะข้อมูลจำลอง
+          if (dataSource == 'mock_data') ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.science, size: 12, color: Colors.orange.shade700),
+                  const SizedBox(width: 2),
+                  Text(
+                    'จำลอง',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.orange.shade700,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
       content: Container(
