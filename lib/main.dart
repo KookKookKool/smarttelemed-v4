@@ -20,7 +20,7 @@ import 'package:smarttelemed_v4/core/appoint/appoint_screen.dart';
 import 'package:smarttelemed_v4/core/doctor/doctor_screen.dart';
 import 'package:smarttelemed_v4/core/appoint/appoint_table.dart';
 import 'package:smarttelemed_v4/core/notes/record_note_screen.dart';
-import 'package:smarttelemed_v4/core/video/videocall_screen.dart';
+import 'package:smarttelemed_v4/core/video/videocall_selection_screen.dart';
 import 'package:smarttelemed_v4/core/doctor/doctor_pending.dart';
 import 'package:smarttelemed_v4/core/appoint/make_appointment_screen.dart';
 import 'package:smarttelemed_v4/core/settings/settings_screen.dart';
@@ -34,7 +34,6 @@ import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:smarttelemed_v4/core/device/connect/device_settings.dart';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -42,9 +41,9 @@ void main() async {
   await Vitals.I.ensure(); // โหลดค่าล่าสุดจาก SharedPreferences
   await DeviceHub.I.ensureStarted();
 
-  await Vitals.I.ensure();            // โหลดค่าล่าสุดจาก SharedPreferences
-  await DeviceHub.I.ensureStarted();  // เริ่มศูนย์กลาง BLE ตั้งแต่บูต
-  await initializeDateFormatting('th_TH'); 
+  await Vitals.I.ensure(); // โหลดค่าล่าสุดจาก SharedPreferences
+  await DeviceHub.I.ensureStarted(); // เริ่มศูนย์กลาง BLE ตั้งแต่บูต
+  await initializeDateFormatting('th_TH');
 
   runApp(const MyApp());
 }
@@ -85,7 +84,7 @@ class MyApp extends StatelessWidget {
         '/doctor': (context) => const DoctorScreen(),
         '/appointtable': (context) => const AppointTableScreen(),
         '/recordNote': (context) => const RecordNoteScreen(),
-        '/videocall': (context) => const VideoCallScreen(),
+        '/videocall': (context) => const VideoCallSelectionScreen(),
         '/doctorPending': (context) =>
             const DoctorPendingScreen(), // ใช้สำหรับหน้ารอแพทย์
         '/makeAppointment': (context) => const MakeAppointmentScreen(),
