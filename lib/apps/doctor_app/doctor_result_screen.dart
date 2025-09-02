@@ -1,6 +1,6 @@
-// lib/core/doctor/doctor_result_screen.dart
+// lib/apps/doctor_app/doctor_result_screen.dart
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
 
 class DoctorResultScreen extends StatelessWidget {
   const DoctorResultScreen({Key? key}) : super(key: key);

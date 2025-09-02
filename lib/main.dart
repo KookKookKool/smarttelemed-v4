@@ -1,40 +1,49 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/core/vhv/device_screen.dart';
-import 'package:smarttelemed_v4/core/vhv/login_qrcam.dart';
-import 'package:smarttelemed_v4/core/vhv/login_token.dart';
-import 'package:smarttelemed_v4/core/splash/plus_loader.dart';
-import 'package:smarttelemed_v4/core/auth/auth_screen.dart';
-import 'package:smarttelemed_v4/core/splash/splash_screen.dart';
-import 'package:smarttelemed_v4/core/vhv/idcard/idcard_loginscreen.dart';
-import 'package:smarttelemed_v4/core/vhv/idcard/idcard_insertscreen.dart';
-import 'package:smarttelemed_v4/core/vhv/idcard/idcard_loader.dart';
-import 'package:smarttelemed_v4/core/vhv/dashboard_screen.dart';
-import 'package:smarttelemed_v4/core/vhv/profile_screen.dart';
+// VHV App imports
+import 'package:smarttelemed_v4/apps/vhv_app/device_screen.dart';
+import 'package:smarttelemed_v4/apps/vhv_app/login_qrcam.dart';
+import 'package:smarttelemed_v4/apps/vhv_app/login_token.dart';
+import 'package:smarttelemed_v4/apps/vhv_app/idcard/idcard_loginscreen.dart';
+import 'package:smarttelemed_v4/apps/vhv_app/idcard/idcard_insertscreen.dart';
+import 'package:smarttelemed_v4/apps/vhv_app/idcard/idcard_loader.dart';
+import 'package:smarttelemed_v4/apps/vhv_app/dashboard_screen.dart';
+import 'package:smarttelemed_v4/apps/vhv_app/profile_screen.dart';
 
-import 'package:smarttelemed_v4/pt/idcard/idcard_pt_insertscreen.dart';
-import 'package:smarttelemed_v4/pt/idcard/idcard_pt_loader.dart';
-import 'package:smarttelemed_v4/pt/profilept_screen.dart';
-import 'package:smarttelemed_v4/pt/mainpt_screen.dart';
+// Patient App imports
+import 'package:smarttelemed_v4/apps/patient_app/idcard/idcard_pt_insertscreen.dart';
+import 'package:smarttelemed_v4/apps/patient_app/idcard/idcard_pt_loader.dart';
+import 'package:smarttelemed_v4/apps/patient_app/profilept_screen.dart';
+import 'package:smarttelemed_v4/apps/patient_app/mainpt_screen.dart';
 
-import 'package:smarttelemed_v4/core/appoint/appoint_screen.dart';
-import 'package:smarttelemed_v4/core/doctor/doctor_screen.dart';
-import 'package:smarttelemed_v4/core/appoint/appoint_table.dart';
-import 'package:smarttelemed_v4/core/notes/record_note_screen.dart';
-import 'package:smarttelemed_v4/core/video/videocall_selection_screen.dart';
-import 'package:smarttelemed_v4/core/doctor/doctor_pending.dart';
-import 'package:smarttelemed_v4/core/appoint/make_appointment_screen.dart';
-import 'package:smarttelemed_v4/core/settings/settings_screen.dart';
-import 'package:smarttelemed_v4/core/doctor/doctor_result_screen.dart';
+// Doctor App imports
+import 'package:smarttelemed_v4/apps/doctor_app/doctor_screen.dart';
+import 'package:smarttelemed_v4/apps/doctor_app/doctor_pending.dart';
+import 'package:smarttelemed_v4/apps/doctor_app/doctor_result_screen.dart';
 
-import 'package:smarttelemed_v4/core/device/connect/device_connect.dart';
+// Shared Services imports
+import 'package:smarttelemed_v4/shared/services/splash/plus_loader.dart';
+import 'package:smarttelemed_v4/shared/services/auth/auth_screen.dart';
+import 'package:smarttelemed_v4/shared/services/splash/splash_screen.dart';
+import 'package:smarttelemed_v4/shared/services/appoint/appoint_screen.dart';
+import 'package:smarttelemed_v4/shared/services/appoint/appoint_table.dart';
+import 'package:smarttelemed_v4/shared/services/notes/record_note_screen.dart';
+import 'package:smarttelemed_v4/shared/services/video/videocall_selection_screen.dart';
+import 'package:smarttelemed_v4/shared/services/appoint/make_appointment_screen.dart';
+import 'package:smarttelemed_v4/shared/services/settings/settings_screen.dart';
+import 'package:smarttelemed_v4/shared/services/device/connect/device_connect.dart';
+import 'package:smarttelemed_v4/shared/services/device/dashboard/vitals.dart';
+import 'package:smarttelemed_v4/shared/services/device/dashboard/device_hub.dart';
+import 'package:smarttelemed_v4/shared/services/device/connect/device_settings.dart';
+import 'package:smarttelemed_v4/shared/widgets/time/th_time_screen.dart';
+import 'package:smarttelemed_v4/shared/services/vitalsign/vitalsign_screen.dart';
+
 import 'package:hive_flutter/hive_flutter.dart';
-
-import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
-import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:smarttelemed_v4/core/device/connect/device_settings.dart';
-import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
-import 'package:smarttelemed_v4/core/vitalsign/vitalsign_screen.dart';
+
+// Shared routes import
+import 'package:smarttelemed_v4/shared/routes.dart';
+// Route observer import
+import 'package:smarttelemed_v4/shared/widgets/time/th_time_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,41 +72,7 @@ class MyApp extends StatelessWidget {
       ),
       debugShowCheckedModeBanner: false,
       home: const PlusLoaderPage(),
-      routes: {
-        '/splash': (context) => const SplashScreen(),
-        '/auth': (context) => const AuthScreen(),
-        '/general': (context) =>
-            const DashboardScreen(), // General users go to dashboard
-        '/hospital': (context) =>
-            const DashboardScreen(), // Hospital users go to dashboard
-        '/loginToken': (context) => const LoginTokenPage(),
-        '/loginQRCam': (context) => const LoginQrCamPage(),
-        '/device': (context) => const DeviceScreen(),
-        '/idcardlogscreen': (context) => const IdCardLoginScreen(),
-        '/idcardlog': (context) => const IdCardLoginScreen(),
-        '/idcardinsert': (context) => const IdCardInsertScreen(),
-        '/idcardloader': (context) => const IdCardLoader(),
-        '/dashboard': (context) => const DashboardScreen(),
-        '/profile': (context) => const ProfileScreen(),
-        '/addcardpt': (context) => const IdCardPtInsertScreen(),
-        '/idcardptloader': (context) => const IdCardPtLoader(),
-        '/profilept': (context) => const ProfilePtScreen(),
-        '/mainpt': (context) => const MainPtScreen(),
-        '/appoint': (context) => const AppointScreen(),
-        '/doctor': (context) => const DoctorScreen(),
-        '/appointtable': (context) => const AppointTableScreen(),
-        '/recordNote': (context) => const RecordNoteScreen(),
-        '/videocall': (context) => const VideoCallSelectionScreen(),
-        '/doctorPending': (context) =>
-            const DoctorPendingScreen(), // ใช้สำหรับหน้ารอแพทย์
-        '/makeAppointment': (context) => const MakeAppointmentScreen(),
-        '/settings': (context) => const SettingScreen(),
-        '/doctorResult': (context) => const DoctorResultScreen(),
-        '/deviceConnect': (context) => const DeviceConnectPage(),
-        '/devicesetting': (context) => const DeviceSettingPage(),
-        '/vitalsign': (context) => const VitalSignScreen(),
-        // เพิ่ม routes อื่นๆ ตามต้องการ
-      },
+      routes: AppRoutes.getAllRoutes(),
     );
   }
 }

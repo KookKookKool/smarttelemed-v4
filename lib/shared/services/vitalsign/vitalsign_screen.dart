@@ -1,18 +1,18 @@
-// lib/core/vital_signs/vital_sign_screen.dart
+// lib/shared/services/vitalsign/vitalsign_screen.dart
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/core/vitalsign/widgets/menu_section.dart';
-import 'package:smarttelemed_v4/style/background.dart';
-// import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:smarttelemed_v4/shared/services/vitalsign/widgets/menu_section.dart';
+import 'package:smarttelemed_v4/shared/themes/background.dart';
+// import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
 
 // ค่าจาก vitals ที่คุณมีอยู่เดิม
-import 'package:smarttelemed_v4/core/device/dashboard/device_dashboard.dart';
+import 'package:smarttelemed_v4/shared/services/device/dashboard/device_dashboard.dart';
 
 // // ✅ ส่วนแสดงรายการอุปกรณ์แบบฝัง (ใช้โมดูลสั้น ๆ)
-// import 'package:smarttelemed_v4/core/device/widgets/connected_devices_section.dart';
+// import 'package:smarttelemed_v4/shared/services/device/widgets/connected_devices_section.dart';
 
 // ✅ หน้าอุปกรณ์เต็มหน้า (แก้ path ให้ตรงกับไฟล์ที่คุณใช้อยู่)
-// import 'package:smarttelemed_v4/core/device/dashboard/devices_inline_section.dart';
-import 'package:smarttelemed_v4/core/device/widgets/devices_menu_section.dart';
+// import 'package:smarttelemed_v4/shared/services/device/dashboard/devices_inline_section.dart';
+import 'package:smarttelemed_v4/shared/services/device/widgets/devices_menu_section.dart';
 
 import 'package:smarttelemed_v4/core/vitalsign/widgets/submit_vitals_button.dart';
 

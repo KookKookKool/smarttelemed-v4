@@ -1,6 +1,6 @@
-// lib/screens/appoint_screen.dart
+// lib/shared/services/appoint/appoint_screen.dart
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart'; // ปรับ path ตามโครงสร้างโปรเจกต์ของคุณ
+import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
 
 class AppointScreen extends StatelessWidget {
   const AppointScreen({Key? key}) : super(key: key);

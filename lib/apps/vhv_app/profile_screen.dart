@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
-import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
+import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
+import 'package:smarttelemed_v4/shared/widgets/time/th_time_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
