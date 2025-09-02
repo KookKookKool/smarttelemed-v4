@@ -1,40 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/core/vhv/device_screen.dart';
-import 'package:smarttelemed_v4/core/vhv/login_qrcam.dart';
-import 'package:smarttelemed_v4/core/vhv/login_token.dart';
-import 'package:smarttelemed_v4/core/splash/plus_loader.dart';
-import 'package:smarttelemed_v4/core/auth/auth_screen.dart';
-import 'package:smarttelemed_v4/core/splash/splash_screen.dart';
-import 'package:smarttelemed_v4/core/vhv/idcard/idcard_loginscreen.dart';
-import 'package:smarttelemed_v4/core/vhv/idcard/idcard_insertscreen.dart';
-import 'package:smarttelemed_v4/core/vhv/idcard/idcard_loader.dart';
-import 'package:smarttelemed_v4/core/vhv/dashboard_screen.dart';
-import 'package:smarttelemed_v4/core/vhv/profile_screen.dart';
-
-import 'package:smarttelemed_v4/pt/idcard/idcard_pt_insertscreen.dart';
-import 'package:smarttelemed_v4/pt/idcard/idcard_pt_loader.dart';
-import 'package:smarttelemed_v4/pt/profilept_screen.dart';
-import 'package:smarttelemed_v4/pt/mainpt_screen.dart';
-
-import 'package:smarttelemed_v4/core/appoint/appoint_screen.dart';
-import 'package:smarttelemed_v4/core/doctor/doctor_screen.dart';
-import 'package:smarttelemed_v4/core/appoint/appoint_table.dart';
-import 'package:smarttelemed_v4/core/notes/record_note_screen.dart';
-import 'package:smarttelemed_v4/core/video/videocall_selection_screen.dart';
-import 'package:smarttelemed_v4/core/doctor/doctor_pending.dart';
-import 'package:smarttelemed_v4/core/appoint/make_appointment_screen.dart';
-import 'package:smarttelemed_v4/core/settings/settings_screen.dart';
-import 'package:smarttelemed_v4/core/doctor/doctor_result_screen.dart';
-
-import 'package:smarttelemed_v4/core/device/connect/device_connect.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-
-import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
-import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:smarttelemed_v4/core/device/connect/device_settings.dart';
-import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
-import 'package:smarttelemed_v4/core/vitalsign/vitalsign_screen.dart';
+
+// Import shared packages
+import 'package:shared_core/shared_core.dart';
+import 'package:shared_widgets/shared_widgets.dart';
+
+// Import patient-specific screens from this app
+import 'pt/idcard/idcard_pt_insertscreen.dart';
+import 'pt/idcard/idcard_pt_loader.dart';
+import 'pt/profilept_screen.dart';
+import 'pt/mainpt_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
