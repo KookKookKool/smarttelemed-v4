@@ -1,0 +1,74 @@
+name: smarttelemed_main_app
+description: "SmartTeleMed V4 Main Application"
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Shared packages
+  shared_core:
+    path: ../../shared/core
+  shared_widgets:
+    path: ../../shared/widgets
+  shared_utils:
+    path: ../../shared/utils
+  shared_style:
+    path: ../../shared/style
+  
+  # External dependencies
+  video_player: ^2.8.2
+  intl: ^0.20.2
+  ntp: ^2.0.0
+  flutter_svg: ^2.0.10
+  flutter_blue_plus: ^1.34.5
+  flutter_blue_plus_windows: ^1.26.1
+  permission_handler: ^11.3.1
+  app_settings: ^5.1.1
+  shared_preferences: ^2.2.3
+  cupertino_icons: ^1.0.8
+  flutter_bloc: ^9.1.1
+  http: ^1.5.0
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  get: ^4.7.2
+  fluttertoast: ^8.2.4
+  webview_flutter: ^4.4.2
+  camera: ^0.10.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/logo.svg
+    - assets/wth.png
+    - assets/card.png
+    - assets/devices/bp.jpg
+    - assets/devices/spo2.jpg
+    - assets/devices/thermo.jpg
+    - assets/devices/glucose.jpg
+    - assets/devices/scale.png
+    - assets/devices/video/bp.mp4
+    - assets/devices/video/spo2.mp4
+    - assets/devices/video/thermo.mp4
+    - assets/devices/video/glucose.mp4
+    - assets/devices/video/scale.mp4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icon/icon.png
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/icon/icon.png
+  remove_alpha_ios: true

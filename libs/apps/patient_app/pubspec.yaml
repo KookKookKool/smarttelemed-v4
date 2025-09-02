@@ -1,0 +1,40 @@
+name: smarttelemed_patient_app
+description: "SmartTeleMed V4 Patient Mobile Application"
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Shared packages
+  shared_core:
+    path: ../../shared/core
+  shared_widgets:
+    path: ../../shared/widgets
+  shared_utils:
+    path: ../../shared/utils
+  shared_style:
+    path: ../../shared/style
+  
+  # Package dependencies
+  common_models:
+    path: ../../packages/common_models
+  api_client:
+    path: ../../packages/api_client
+  
+  # External dependencies
+  flutter_bloc: ^9.1.1
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,22 @@
+name: device_drivers
+description: Device driver package for various medical devices
+version: 1.0.0
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_blue_plus: ^1.34.5
+  permission_handler: ^11.3.1
+  common_models:
+    path: ../common_models
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

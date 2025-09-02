@@ -1,0 +1,80 @@
+name: smarttelemed_v4_workspace
+
+packages:
+  - libs/shared/**
+  - libs/apps/**
+  - libs/packages/**
+
+command:
+  bootstrap:
+    # Dependencies to be built when running `melos bootstrap`
+    environment:
+      sdk: "^3.8.1"
+      flutter: ">=3.0.0"
+
+  version:
+    # Workspace versioning configuration
+    updateGitTagRefs: true
+    releaseUrl: false
+
+  clean:
+    # Packages to clean when running `melos clean`
+    hooks:
+      pre: rm -rf **/flutter_tools_log.txt
+
+scripts:
+  # Scripts for development workflow
+  
+  # Build all packages
+  build:all:
+    run: flutter packages get
+    description: Get dependencies for all packages
+    exec:
+      concurrency: 5
+
+  # Analyze all packages
+  analyze:all:
+    run: flutter analyze
+    description: Analyze all packages
+    exec:
+      concurrency: 5
+
+  # Test all packages
+  test:all:
+    run: flutter test
+    description: Test all packages
+    exec:
+      concurrency: 5
+      
+  # Format all packages
+  format:all:
+    run: dart format --set-exit-if-changed .
+    description: Format all packages
+    exec:
+      concurrency: 5
+
+  # Clean all packages
+  clean:all:
+    run: flutter clean
+    description: Clean all packages
+    exec:
+      concurrency: 5
+
+  # Build specific apps
+  build:main_app:
+    run: flutter build apk
+    description: Build main app APK
+    exec:
+      cwd: libs/apps/main_app
+
+  build:doctor_app:
+    run: flutter build apk
+    description: Build doctor app APK
+    exec:
+      cwd: libs/apps/doctor_app
+
+  build:patient_app:
+    run: flutter build apk
+    description: Build patient app APK
+    exec:
+      cwd: libs/apps/patient_app
