@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:smarttelemed_v4/widget/chang_appoint.dart';
+import 'package:smarttelemed_v4/shared/widgets/chang_appoint.dart';
 
 class AppointTableScreen extends StatefulWidget {
   const AppointTableScreen({Key? key}) : super(key: key);

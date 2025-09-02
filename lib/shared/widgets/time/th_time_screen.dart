@@ -15,7 +15,7 @@
 //
 // App setup:
 //   1) Register the RouteObserver in your MaterialApp:
-//        import 'package:smarttelemed_v4/core/time/th_time_text.dart';
+//        import 'package:smarttelemed_v4/shared/services/time/th_time_text.dart';
 //        MaterialApp(
 //          navigatorObservers: [appRouteObserver],
 //          // ...

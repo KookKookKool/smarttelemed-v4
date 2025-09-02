@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:smarttelemed_v4/core/device/add_device/A&D/ua_651ble.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/A&D/ua_651ble.dart';
 
 class ParserBinding {
   ParserBinding._({

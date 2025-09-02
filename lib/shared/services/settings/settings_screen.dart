@@ -1,8 +1,8 @@
 // lib/core/setting/setting_screen.dart
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
-import 'package:smarttelemed_v4/storage/api_data_view_screen.dart';
-import 'package:smarttelemed_v4/storage/storage.dart';
+import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
+import 'package:smarttelemed_v4/shared/storage/api_data_view_screen.dart';
+import 'package:smarttelemed_v4/shared/storage/storage.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({Key? key}) : super(key: key);

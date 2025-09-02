@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/style/background_2.dart';
-import 'package:smarttelemed_v4/style/app_colors.dart';
+import 'package:smarttelemed_v4/shared/themes/background_2.dart';
+import 'package:smarttelemed_v4/shared/themes/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:smarttelemed_v4/widget/PDPA/pdpa_text.dart'; // ⬅️ สำคัญ: ต้องมีฟังก์ชัน showPdpaDialog
+import 'package:smarttelemed_v4/shared/widgets/PDPA/pdpa_text.dart'; // ⬅️ สำคัญ: ต้องมีฟังก์ชัน showPdpaDialog
 
 class IdCardLoginScreen extends StatelessWidget {
   const IdCardLoginScreen({Key? key}) : super(key: key);

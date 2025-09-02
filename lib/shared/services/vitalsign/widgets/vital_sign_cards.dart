@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/core/vitalsign/widgets/numpad.dart';
+import 'package:smarttelemed_v4/shared/services/vitalsign/widgets/numpad.dart';
 
 class VitalSignCards extends StatefulWidget {
   const VitalSignCards({Key? key}) : super(key: key);

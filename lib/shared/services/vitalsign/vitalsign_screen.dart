@@ -14,9 +14,9 @@ import 'package:smarttelemed_v4/shared/services/device/dashboard/device_dashboar
 // import 'package:smarttelemed_v4/shared/services/device/dashboard/devices_inline_section.dart';
 import 'package:smarttelemed_v4/shared/services/device/widgets/devices_menu_section.dart';
 
-import 'package:smarttelemed_v4/core/vitalsign/widgets/submit_vitals_button.dart';
+import 'package:smarttelemed_v4/shared/services/vitalsign/widgets/submit_vitals_button.dart';
 
-import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
+import 'package:smarttelemed_v4/shared/widgets/time/th_time_screen.dart';
 
 class VitalSignScreen extends StatelessWidget {
   const VitalSignScreen({Key? key}) : super(key: key);

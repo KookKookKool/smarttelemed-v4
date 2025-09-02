@@ -1,6 +1,6 @@
 // lib/screens/main_pt/widgets/quick_actions_row.dart
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/core/vitalsign/vitalsign_screen.dart';
+import 'package:smarttelemed_v4/shared/services/vitalsign/vitalsign_screen.dart';
 
 class QuickActionsRow extends StatelessWidget {
   const QuickActionsRow({Key? key}) : super(key: key);

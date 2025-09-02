@@ -1,17 +1,17 @@
 // lib/screens/main_pt/main_pt_screen.dart
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
 
 // ส่วนหัว/การ์ดผู้ป่วย
-import 'package:smarttelemed_v4/pt/widgets/header_hospital.dart';
-import 'package:smarttelemed_v4/pt/widgets/patient_card.dart';
+import 'package:smarttelemed_v4/apps/patient_app/widgets/header_hospital.dart';
+import 'package:smarttelemed_v4/apps/patient_app/widgets/patient_card.dart';
 
 // สไลด์ 4 หน้า
-import 'package:smarttelemed_v4/pt/widgets/main_slider/main_slider.dart';
+import 'package:smarttelemed_v4/apps/patient_app/widgets/main_slider/main_slider.dart';
 
 // ปุ่มลัด
-import 'package:smarttelemed_v4/pt/widgets/quick_actions_row.dart';
-import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
+import 'package:smarttelemed_v4/apps/patient_app/widgets/quick_actions_row.dart';
+import 'package:smarttelemed_v4/shared/widgets/time/th_time_screen.dart';
 
 class MainPtScreen extends StatelessWidget {
   const MainPtScreen({Key? key}) : super(key: key);

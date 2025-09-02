@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
-import 'package:smarttelemed_v4/core/device/api/clinic_api.dart';
-import 'package:smarttelemed_v4/storage/storage.dart';
+import 'package:smarttelemed_v4/shared/services/device/dashboard/vitals.dart';
+import 'package:smarttelemed_v4/shared/services/device/api/clinic_api.dart';
+import 'package:smarttelemed_v4/shared/storage/storage.dart';
 
 class SubmitVitalsButton extends StatefulWidget {
   const SubmitVitalsButton({

@@ -1,8 +1,8 @@
 // lib/core/device/dashboard/devices_inline_section.dart
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/core/device/session/device_session.dart';
-import 'package:smarttelemed_v4/core/device/dashboard/device_detail_page.dart';
-import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/device_session.dart';
+import 'package:smarttelemed_v4/shared/services/device/dashboard/device_detail_page.dart';
+import 'package:smarttelemed_v4/shared/services/device/dashboard/device_hub.dart';
 
 class DevicesInlineSection extends StatelessWidget {
   const DevicesInlineSection({

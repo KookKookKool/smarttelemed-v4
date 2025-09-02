@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
-import 'package:smarttelemed_v4/core/device/session/parser_binding.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/parser_binding.dart';
 
 class DeviceSession {
   DeviceSession({

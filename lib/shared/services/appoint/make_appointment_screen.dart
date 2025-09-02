@@ -1,6 +1,6 @@
 // lib/core/appoint/make_appointment_screen.dart
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
 
 class MakeAppointmentScreen extends StatefulWidget {
   const MakeAppointmentScreen({Key? key}) : super(key: key);

@@ -1,6 +1,6 @@
 //device/ui/device_card.dart
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/core/device/session/device_session.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/device_session.dart';
 
 class DeviceCard extends StatelessWidget {
   const DeviceCard({

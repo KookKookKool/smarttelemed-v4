@@ -5,13 +5,13 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 // ใช้ของที่คุณทำไว้แล้ว
-import 'package:smarttelemed_v4/core/device/session/device_session.dart';
-import 'package:smarttelemed_v4/core/device/session/pick_parser.dart';
-import 'package:smarttelemed_v4/core/device/ui/device_card.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/device_session.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/pick_parser.dart';
+import 'package:smarttelemed_v4/shared/services/device/ui/device_card.dart';
 
 // ไปหน้าอื่น
-import 'package:smarttelemed_v4/core/device/connect/device_connect.dart';
-import 'package:smarttelemed_v4/core/device/connect/check conncet/device_page.dart';
+import 'package:smarttelemed_v4/shared/services/device/connect/device_connect.dart';
+import 'package:smarttelemed_v4/shared/services/device/connect/check conncet/device_page.dart';
 
 /// พาเนลแบบฝังในหน้าอื่น ๆ ได้ (ไม่มี Scaffold)
 class DeviceCardsPanel extends StatefulWidget {

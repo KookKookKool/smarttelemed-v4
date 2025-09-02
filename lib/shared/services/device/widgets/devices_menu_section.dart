@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/core/device/video/device_video_page.dart';
+import 'package:smarttelemed_v4/shared/services/device/video/device_video_page.dart';
 
 class DevicesMenuSection extends StatelessWidget {
   const DevicesMenuSection({super.key, this.title = 'Devices'});

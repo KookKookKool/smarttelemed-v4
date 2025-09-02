@@ -1,10 +1,10 @@
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
-import 'package:smarttelemed_v4/core/device/session/guid_registry.dart';
-import 'package:smarttelemed_v4/core/device/session/parser_binding.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/guid_registry.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/parser_binding.dart';
 import 'detect_utils.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_bm57.dart';
-import 'package:smarttelemed_v4/core/device/add_device/A&D/ua_651ble.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Beurer/beurer_bm57.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/A&D/ua_651ble.dart';
 
 
 Future<ParserBinding?> detectBeurerBm57(

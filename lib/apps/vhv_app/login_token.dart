@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/style/app_colors.dart';
-import 'package:smarttelemed_v4/utils/responsive.dart';
+import 'package:smarttelemed_v4/shared/themes/app_colors.dart';
+import 'package:smarttelemed_v4/shared/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'login_qrcam.dart';
-import 'package:smarttelemed_v4/api/backend_api.dart';
-import 'package:smarttelemed_v4/storage/storage.dart';
+import 'package:smarttelemed_v4/shared/api/backend_api.dart';
+import 'package:smarttelemed_v4/shared/storage/storage.dart';
 
 class LoginTokenPage extends StatefulWidget {
   const LoginTokenPage({Key? key}) : super(key: key);

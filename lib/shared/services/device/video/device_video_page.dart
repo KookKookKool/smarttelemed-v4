@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
-import 'package:smarttelemed_v4/core/device/session/device_session.dart';
+import 'package:smarttelemed_v4/shared/services/device/dashboard/device_hub.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/device_session.dart';
 
 enum DeviceKind { bp, spo2, temp, glucose, scale }
 

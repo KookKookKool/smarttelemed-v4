@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/style/background.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:smarttelemed_v4/shared/themes/background.dart';
+import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
 import 'dart:math';
-import 'package:smarttelemed_v4/widget/time/th_time_screen.dart';
+import 'package:smarttelemed_v4/shared/widgets/time/th_time_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({Key? key}) : super(key: key);

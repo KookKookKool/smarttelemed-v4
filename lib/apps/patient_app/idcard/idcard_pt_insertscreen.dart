@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/style/background.dart';
-import 'package:smarttelemed_v4/style/app_colors.dart';
+import 'package:smarttelemed_v4/shared/themes/background.dart';
+import 'package:smarttelemed_v4/shared/themes/app_colors.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:smarttelemed_v4/core/auth/idcard_reader.dart';
+import 'package:smarttelemed_v4/shared/services/auth/idcard_reader.dart';
 import 'dart:async';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:smarttelemed_v4/storage/storage.dart';
+import 'package:smarttelemed_v4/shared/storage/storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io' show Platform;
 

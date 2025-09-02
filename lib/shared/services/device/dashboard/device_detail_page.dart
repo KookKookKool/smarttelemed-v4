@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
-import 'package:smarttelemed_v4/core/device/session/device_session.dart';
-import 'package:smarttelemed_v4/core/device/session/pick_parser.dart';
-import 'package:smarttelemed_v4/core/device/dashboard/device_hub.dart';
-import 'package:smarttelemed_v4/core/device/video/device_video.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/device_session.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/pick_parser.dart';
+import 'package:smarttelemed_v4/shared/services/device/dashboard/device_hub.dart';
+import 'package:smarttelemed_v4/shared/services/device/video/device_video.dart';
 
 class DeviceDetailPage extends StatefulWidget {
   const DeviceDetailPage.session(this.session, {super.key}) : deviceId = null;

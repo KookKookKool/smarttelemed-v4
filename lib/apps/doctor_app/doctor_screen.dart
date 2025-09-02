@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
 
 class DoctorScreen extends StatefulWidget {
   const DoctorScreen({Key? key}) : super(key: key);

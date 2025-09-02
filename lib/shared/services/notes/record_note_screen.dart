@@ -1,6 +1,6 @@
 // lib/core/notes/record_note_screen.dart
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/widget/manubar.dart';
+import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
 
 class RecordNoteScreen extends StatefulWidget {
   const RecordNoteScreen({Key? key}) : super(key: key);

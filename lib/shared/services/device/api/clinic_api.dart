@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:smarttelemed_v4/core/device/dashboard/vitals.dart';
+import 'package:smarttelemed_v4/shared/services/device/dashboard/vitals.dart';
 
 class ClinicResponse {
   final bool ok;

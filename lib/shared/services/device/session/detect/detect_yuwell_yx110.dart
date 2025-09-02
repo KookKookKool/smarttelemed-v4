@@ -1,8 +1,8 @@
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
-import 'package:smarttelemed_v4/core/device/session/guid_registry.dart';
-import 'package:smarttelemed_v4/core/device/session/parser_binding.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/guid_registry.dart';
+import 'package:smarttelemed_v4/shared/services/device/session/parser_binding.dart';
 import 'detect_utils.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_fpo_yx110.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Yuwell/yuwell_fpo_yx110.dart';
 
 
 Future<ParserBinding?> detectYuwellYx110(

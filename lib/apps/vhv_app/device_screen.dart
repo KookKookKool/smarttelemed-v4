@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:smarttelemed_v4/style/background.dart';
-import 'package:smarttelemed_v4/utils/responsive.dart';
+import 'package:smarttelemed_v4/shared/themes/background.dart';
+import 'package:smarttelemed_v4/shared/utils/responsive.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 

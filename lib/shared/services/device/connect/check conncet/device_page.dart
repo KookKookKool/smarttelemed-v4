@@ -5,19 +5,19 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart' hide FlutterBluePlus;
 import 'package:flutter_blue_plus_windows/flutter_blue_plus_windows.dart';
 
 // parsers
-import 'package:smarttelemed_v4/core/device/add_device/A&D/ua_651ble.dart';        // Stream<BpReading>
-import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_bp_ye680a.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_fpo_yx110.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_yhw_6.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/A&D/ua_651ble.dart';        // Stream<BpReading>
+import 'package:smarttelemed_v4/shared/services/device/add_device/Yuwell/yuwell_bp_ye680a.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Yuwell/yuwell_fpo_yx110.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Yuwell/yuwell_yhw_6.dart';
 // ใช้ตัว simple (Stream<String> mg/dL)
-import 'package:smarttelemed_v4/core/device/add_device/Yuwell/yuwell_glucose.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_po_jpd_500f.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_ha120.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Mi/mibfs_05hm.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_tem_ft95.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Beurer/beurer_bm57.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_bfs710.dart';
-import 'package:smarttelemed_v4/core/device/add_device/Jumper/jumper_jpd_fr400.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Yuwell/yuwell_glucose.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Jumper/jumper_po_jpd_500f.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Jumper/jumper_jpd_ha120.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Mi/mibfs_05hm.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Beurer/beurer_tem_ft95.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Beurer/beurer_bm57.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Jumper/jumper_jpd_bfs710.dart';
+import 'package:smarttelemed_v4/shared/services/device/add_device/Jumper/jumper_jpd_fr400.dart';
 
 class DevicePage extends StatefulWidget {
   final BluetoothDevice device;
