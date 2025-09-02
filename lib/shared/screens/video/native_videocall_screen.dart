@@ -25,7 +25,7 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
   String _statusMessage = 'เริ่มต้นการเชื่อมต่อ...';
 
   // OpenVidu configuration
-  final String _openViduUrl = 'https://conference.pcm-life.com';
+  final String _openViduUrl = 'https://openvidu.pcm-life.com';
   final String _sessionName = 'telemed-test';
   String? _sessionId;
   String? _token;
