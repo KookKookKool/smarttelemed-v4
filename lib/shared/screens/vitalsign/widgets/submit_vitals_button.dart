@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smarttelemed_v4/shared/screens/device/dashboard/vitals.dart';
 import 'package:smarttelemed_v4/shared/screens/device/api/clinic_api.dart';
+import 'package:smarttelemed_v4/shared/api/stms_api.dart';
 import 'package:smarttelemed_v4/storage/storage.dart';
 
 class SubmitVitalsButton extends StatefulWidget {
   const SubmitVitalsButton({
     super.key,
-    this.addHrUrl =
-        'https://emr-life.com/expert/telemed/StmsApi/add_visit', // TODO: เปลี่ยนเป็น emr-life.com
+    this.addHrUrl,
     this.careUnitId,
     this.publicId,
     this.recepPublicId,
@@ -20,7 +20,7 @@ class SubmitVitalsButton extends StatefulWidget {
     this.fontSize,
   });
 
-  final String addHrUrl;
+  final String? addHrUrl;
   final String? careUnitId;
   final String? publicId;
   final String? recepPublicId;
@@ -98,7 +98,7 @@ class _SubmitVitalsButtonState extends State<SubmitVitalsButton> {
     }
 
     final res = await ClinicApi.addHealthRecord(
-      url: widget.addHrUrl,
+      url: widget.addHrUrl ?? StmsApi.addVisit,
       vitals: Vitals.I,
       careUnitId: _careUnitId,
       publicId: _publicId,

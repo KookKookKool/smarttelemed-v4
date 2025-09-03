@@ -8,9 +8,18 @@ import 'package:smarttelemed_v4/shared/widgets/time/th_time_screen.dart';
 import 'package:smarttelemed_v4/shared/screens/splash/plus_loader.dart';
 import 'package:smarttelemed_v4/shared/screens/auth/auth_screen.dart';
 import 'package:smarttelemed_v4/routes/app_routes.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables from .env (if present).
+  // Create a .env file at project root for local dev and add to .gitignore.
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    // Ignore if no .env present
+  }
 
   await Hive.initFlutter();
   await Vitals.I.ensure(); // โหลดค่าล่าสุดจาก SharedPreferences

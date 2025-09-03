@@ -50,6 +50,7 @@ dependencies:
   fluttertoast: ^8.2.4
   webview_flutter: ^4.4.2
   camera: ^0.10.5
+  flutter_dotenv: ^5.0.2
 
 dev_dependencies:
   flutter_test:

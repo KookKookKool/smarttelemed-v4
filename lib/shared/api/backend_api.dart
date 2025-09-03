@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'stms_api.dart';
 
 class CareUnitApi {
-  static const String apiUrl =
-      'https://emr-life.com/expert/telemed/StmsApi/list_care_unit';
+  static final String apiUrl = StmsApi.listCareUnit;
 
   // ทดสอบส่งแบบง่ายๆ เหมือนหน้าเว็บ
   static Future<Map<String, dynamic>?> fetchCareUnitSimple(String code) async {
