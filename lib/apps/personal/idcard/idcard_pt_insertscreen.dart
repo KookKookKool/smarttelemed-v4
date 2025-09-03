@@ -432,18 +432,8 @@ class _IdCardPtInsertScreenState extends State<IdCardPtInsertScreen> {
       final List<Map<String, String>> mockDataList = [
         {
           'fullName': 'นาย คนไข้ ทดสอบ',
-          'idCard': '2234567890123',
+          'idCard': '1111111111117',
           'address': '234/56 หมู่ที่ 7 ตำบลคนไข้ อำเภอทดสอบ จังหวัดผู้ป่วย',
-        },
-        {
-          'fullName': 'นางสาว ผู้ป่วย จำลอง',
-          'idCard': '8876543210987',
-          'address': '890/23 หมู่ที่ 4 ตำบลจำลอง อำเภอผู้ป่วย จังหวัดทดสอบ',
-        },
-        {
-          'fullName': 'นาง คนไข้ ระบบ',
-          'idCard': '4445666677778',
-          'address': '567/89 หมู่ที่ 10 ตำบลระบบ อำเภอคนไข้ จังหวัดผู้ป่วย',
         },
       ];
 
@@ -844,7 +834,6 @@ class _IdCardPtInsertScreenState extends State<IdCardPtInsertScreen> {
                     ),
                   ),
                 ),
-
             ],
           ),
         ),

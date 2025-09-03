@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:smarttelemed_v4/shared/widgets/manubar.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:smarttelemed_v4/storage/storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class VideoCallScreen extends StatefulWidget {
@@ -16,6 +19,11 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
   bool _isLoading = true;
   bool _hasPermissions = false;
   String? _errorMessage;
+  // Debug overlay fields
+  String? _debugPublicId;
+  String? _debugApiResponse;
+  String? _debugSessionId;
+  String _debugStatus = '';
 
   @override
   void initState() {
@@ -108,9 +116,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     );
 
     // Load OpenVidu page
-    _webViewController.loadRequest(
-      Uri.parse('https://conference.pcm-life.com/'),
-    );
+    _webViewController.loadRequest(Uri.parse('https://openvidu.pcm-life.com'));
   }
 
   void _enableWebViewMediaAccess() {
@@ -233,6 +239,75 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     await Future.delayed(const Duration(seconds: 3));
 
     try {
+      // พยายามหา public_id (idCard) จาก storage ก่อน
+      String? publicId;
+      try {
+        final patient = await PatientIdCardStorage.loadPatientIdCardData();
+        if (patient != null && patient['idCard'] != null) {
+          publicId = patient['idCard'].toString();
+          debugPrint('🔎 Found patient idCard in Hive: $publicId');
+          setState(() {
+            _debugPublicId = publicId;
+            _debugStatus = 'found_public_id';
+          });
+        }
+      } catch (e) {
+        debugPrint('❌ Error reading patient id from Hive: $e');
+      }
+
+      // หากเจอ publicId ให้เรียก API เพื่อขอ session/token แล้ว inject ลงใน WebView (localStorage)
+      if (publicId != null && publicId.isNotEmpty) {
+        try {
+          final sessionId = await _fetchSessionId(publicId);
+          if (sessionId != null && sessionId.isNotEmpty) {
+            // ตั้ง token เป็น global variable บนหน้าเว็บ แล้วพยายามเรียก joinSession() พร้อม retry
+            // Inject JS that creates its own OpenVidu session and connects using the token
+            final js = '''(function(token){
+              console.log('✅ Flutter injecting token and creating OpenVidu session');
+              try {
+                const OV = new OpenVidu();
+                const session = OV.initSession();
+
+                session.on('streamCreated', function(event) {
+                  try {
+                    session.subscribe(event.stream, 'subscriber');
+                  } catch(e) { console.log('subscribe error', e); }
+                });
+
+                session.connect(token)
+                  .then(() => {
+                    try {
+                      const publisher = OV.initPublisher('publisher');
+                      session.publish(publisher);
+                      console.log('✅ Connected and published via injected OpenVidu');
+                    } catch(e) { console.log('publish error', e); }
+                  })
+                  .catch(error => {
+                    console.log('❌ Error connecting injected OpenVidu session', error);
+                  });
+              } catch (e) {
+                console.log('❌ Error in injected OpenVidu flow', e);
+              }
+            })('$sessionId');''';
+
+            await _webViewController.runJavaScript(js);
+            setState(() {
+              _debugSessionId = sessionId;
+              _debugStatus = 'fetched_session';
+            });
+            debugPrint(
+              '✅ Injected sessionId and requested joinSession in WebView',
+            );
+          } else {
+            debugPrint('⚠️ sessionId empty from API');
+          }
+        } catch (err) {
+          debugPrint('❌ Error fetching/injecting sessionId: $err');
+        }
+      } else {
+        debugPrint('⚠️ publicId not found - skipping token fetch');
+      }
+
       // Auto-fill และ submit form
       await _webViewController.runJavaScript('''
         console.log('🚀 Starting auto-login process...');
@@ -548,6 +623,78 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     }
   }
 
+  // POST public_id ไปยัง API เพื่อรับ session/token
+  Future<String?> _fetchSessionId(String publicId) async {
+    try {
+      final uri = Uri.parse(
+        'https://emr-life.com/clinic_master/clinic/Api/get_video',
+      );
+      final response = await http
+          .post(uri, body: {'public_id': publicId})
+          .timeout(const Duration(seconds: 10));
+
+      debugPrint('🔁 get_video response status: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        final body = response.body;
+        setState(() {
+          _debugApiResponse = body;
+        });
+        debugPrint('🔍 get_video body: $body');
+        try {
+          final jsonResp = json.decode(body);
+          // พยายามดึง sessionId จากหลายตำแหน่งที่เป็นไปได้
+          if (jsonResp is Map) {
+            // Prefer token field (OpenVidu connection string), then sessionId fallbacks
+            // Prefer token field (OpenVidu connection string), then sessionId fallbacks
+            Future<String?> _saveAndReturnToken(dynamic tokRaw) async {
+              try {
+                String tok = tokRaw.toString();
+                // If token looks like a URL containing token=..., extract the actual tok_... value
+                final match = RegExp(r'token=([^&]+)').firstMatch(tok);
+                final tokenVal = match != null
+                    ? Uri.decodeComponent(match.group(1)!)
+                    : tok;
+                final patient =
+                    await PatientIdCardStorage.loadPatientIdCardData();
+                final updated = {...?patient, 'video_token': tokenVal};
+                await PatientIdCardStorage.savePatientIdCardData(updated);
+                debugPrint('💾 Saved video_token to PatientIdCardStorage');
+                return tokenVal;
+              } catch (e) {
+                debugPrint('❌ Error saving video_token: $e');
+                return tokRaw.toString();
+              }
+            }
+
+            if (jsonResp['token'] != null)
+              return await _saveAndReturnToken(jsonResp['token']);
+            if (jsonResp['data'] != null && jsonResp['data']['token'] != null)
+              return await _saveAndReturnToken(jsonResp['data']['token']);
+            if (jsonResp['result'] != null &&
+                jsonResp['result']['token'] != null)
+              return await _saveAndReturnToken(jsonResp['result']['token']);
+            // Backwards compat: sessionId fields
+            if (jsonResp['sessionId'] != null)
+              return jsonResp['sessionId'].toString();
+            if (jsonResp['data'] != null &&
+                jsonResp['data']['sessionId'] != null)
+              return jsonResp['data']['sessionId'].toString();
+            if (jsonResp['result'] != null &&
+                jsonResp['result']['sessionId'] != null)
+              return jsonResp['result']['sessionId'].toString();
+          }
+        } catch (e) {
+          debugPrint('❌ Failed to parse get_video JSON: $e');
+        }
+        // fallback: return raw body if it's likely the token
+        return body;
+      }
+    } catch (e) {
+      debugPrint('❌ Error calling get_video: $e');
+    }
+    return null;
+  }
+
   void _handleJavaScriptMessage(String message) {
     debugPrint('📨 Received message from WebView: $message');
 
@@ -771,6 +918,65 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
             child: const Icon(Icons.call_end, size: 20),
+          ),
+        ),
+
+        // Debug overlay (bottom-left)
+        Positioned(
+          bottom: 8,
+          left: 8,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            width: 260,
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Debug',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'publicId: ${_debugPublicId ?? '-'}',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'sessionId: ${_debugSessionId ?? '-'}',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'status: ${_debugStatus}',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'api:',
+                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                SizedBox(
+                  height: 60,
+                  child: SingleChildScrollView(
+                    child: Text(
+                      _debugApiResponse != null
+                          ? (_debugApiResponse!.length > 180
+                                ? _debugApiResponse!.substring(0, 180) + '...'
+                                : _debugApiResponse!)
+                          : '-',
+                      style: TextStyle(color: Colors.white60, fontSize: 11),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],

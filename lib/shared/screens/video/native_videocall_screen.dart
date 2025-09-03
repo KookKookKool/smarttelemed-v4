@@ -4,14 +4,15 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:http/http.dart' as http;
 import 'package:camera/camera.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:smarttelemed_v4/storage/storage.dart';
 
-/// Native Video Call Screen ที่เชื่อมต่อกับ OpenVidu โดยตรง
-/// ใช้ Native Camera แทน WebView เพื่อแก้ปัญหา media permissions
 class NativeVideoCallScreen extends StatefulWidget {
   final String? userId;
   final String? sessionId;
 
-  const NativeVideoCallScreen({super.key, this.userId, this.sessionId});
+  const NativeVideoCallScreen({Key? key, this.userId, this.sessionId})
+    : super(key: key);
 
   @override
   State<NativeVideoCallScreen> createState() => _NativeVideoCallScreenState();
@@ -27,9 +28,7 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
   // OpenVidu configuration
   final String _openViduUrl = 'https://openvidu.pcm-life.com';
   final String _sessionName = 'telemed-test';
-  String? _sessionId;
   String? _token;
-  String? _workingCredential;
 
   // Camera
   CameraController? _cameraController;
@@ -55,21 +54,10 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
     });
 
     try {
-      // Step 1: ขออนุญาต permissions
       await _requestPermissions();
-
-      setState(() {
-        _statusMessage = 'กำลังเตรียมกล้อง...';
-      });
-
-      // Step 2: เตรียมกล้อง
+      setState(() => _statusMessage = 'กำลังเตรียมกล้อง...');
       await _initializeCamera();
-
-      setState(() {
-        _statusMessage = 'กำลังสร้างห้องประชุม...';
-      });
-
-      // Step 3: สร้าง OpenVidu session และ token
+      setState(() => _statusMessage = 'กำลังสร้างห้องประชุม...');
       await _connectToOpenViduService();
     } catch (e) {
       setState(() {
@@ -88,188 +76,123 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
         throw Exception('จำเป็นต้องได้รับอนุญาตใช้กล้องและไมค์');
       }
     }
-
-    debugPrint('✅ ได้รับอนุญาต camera และ microphone แล้ว');
   }
 
   Future<void> _initializeCamera() async {
     try {
-      // ค้นหากล้องที่มี
       _cameras = await availableCameras();
-
-      if (_cameras == null || _cameras!.isEmpty) {
+      if (_cameras == null || _cameras!.isEmpty)
         throw Exception('ไม่พบกล้องในอุปกรณ์');
-      }
 
-      // ใช้กล้องหน้าถ้ามี ไม่งั้นใช้กล้องแรก
       CameraDescription camera = _cameras!.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.front,
+        (c) => c.lensDirection == CameraLensDirection.front,
         orElse: () => _cameras!.first,
       );
-
-      // สร้าง camera controller
       _cameraController = CameraController(
         camera,
         ResolutionPreset.medium,
         enableAudio: true,
       );
-
-      // เริ่มต้นกล้อง
       await _cameraController!.initialize();
-
-      setState(() {
-        _isCameraInitialized = true;
-      });
-
-      debugPrint('✅ Camera initialized successfully');
+      setState(() => _isCameraInitialized = true);
     } catch (e) {
-      debugPrint('❌ Camera initialization error: $e');
-      throw e;
+      debugPrint('Camera init error: $e');
+      rethrow;
     }
   }
 
   Future<void> _connectToOpenViduService() async {
     try {
-      // Step 1: สร้าง session
-      final sessionResponse = await _createSession();
-      if (sessionResponse == null) {
-        throw Exception('ไม่สามารถสร้าง session ได้');
-      }
-
-      _sessionId = sessionResponse;
-
       setState(() {
-        _statusMessage = 'กำลังสร้าง token...';
+        _statusMessage = 'กำลังขอ token จากเซิร์ฟเวอร์...';
       });
 
-      // Step 2: สร้าง token
-      final tokenResponse = await _createToken(_sessionId!);
-      if (tokenResponse == null) {
-        throw Exception('ไม่สามารถสร้าง token ได้');
+      String? publicId;
+      try {
+        final patient = await PatientIdCardStorage.loadPatientIdCardData();
+        if (patient != null && patient['idCard'] != null)
+          publicId = patient['idCard'].toString();
+      } catch (e) {
+        debugPrint('Error loading patient id: $e');
       }
 
-      _token = tokenResponse;
+      if (publicId == null || publicId.isEmpty)
+        throw Exception('ไม่พบ public_id ของผู้ป่วย ในเครื่อง');
 
-      setState(() {
-        _statusMessage = 'กำลังเชื่อมต่อห้องประชุม...';
-      });
+      try {
+        final uri = Uri.parse(
+          'https://emr-life.com/clinic_master/clinic/Api/get_video',
+        );
+        final resp = await http
+            .post(uri, body: {'public_id': publicId})
+            .timeout(const Duration(seconds: 10));
+        if (resp.statusCode == 200) {
+          final body = resp.body;
+          final parsed = json.decode(body);
+          String? tokRaw;
+          if (parsed is Map) {
+            if (parsed['token'] != null)
+              tokRaw = parsed['token'].toString();
+            else if (parsed['data'] != null && parsed['data']['token'] != null)
+              tokRaw = parsed['data']['token'].toString();
+            else if (parsed['result'] != null &&
+                parsed['result']['token'] != null)
+              tokRaw = parsed['result']['token'].toString();
+          }
 
-      // Step 3: เชื่อมต่อสำเร็จ
-      await _connectToRoom();
+          String? tokenVal;
+          if (tokRaw != null) {
+            final m = RegExp(r'token=([^&]+)').firstMatch(tokRaw);
+            tokenVal = m != null ? Uri.decodeComponent(m.group(1)!) : tokRaw;
+          } else if (body.contains('tok_')) {
+            final m2 = RegExp(r'(tok_[A-Za-z0-9_-]+)').firstMatch(body);
+            tokenVal = m2?.group(1);
+          }
+
+          if (tokenVal == null)
+            throw Exception('ไม่พบ token ในการตอบกลับจากเซิร์ฟเวอร์');
+
+          _token = tokenVal;
+          try {
+            final patient = await PatientIdCardStorage.loadPatientIdCardData();
+            final updated = {...?patient, 'video_token': _token};
+            await PatientIdCardStorage.savePatientIdCardData(updated);
+          } catch (_) {}
+
+          setState(() => _statusMessage = 'เชื่อมต่อห้องประชุม...');
+          await _connectToRoom();
+          return;
+        } else {
+          throw Exception('get_video status ${resp.statusCode}');
+        }
+      } catch (e) {
+        String reason = e.toString();
+        if (kIsWeb && reason.contains('Failed to fetch')) {
+          reason =
+              'Failed to fetch (browser CORS). เซิร์ฟเวอร์ต้องเปิด CORS (Access-Control-Allow-Origin) หรือต้องเรียกผ่าน proxy';
+        }
+
+        try {
+          final cached = await PatientIdCardStorage.loadPatientIdCardData();
+          if (cached != null && cached['video_token'] != null) {
+            _token = cached['video_token'].toString();
+            setState(
+              () => _statusMessage =
+                  'ใช้ token จากเครื่อง (cache) และพยายามเชื่อมต่อ...',
+            );
+            await _connectToRoom();
+            return;
+          }
+        } catch (_) {}
+
+        await _showGetVideoErrorDialog(reason, publicId);
+        return;
+      }
     } catch (e) {
       setState(() {
         _statusMessage = 'เชื่อมต่อ OpenVidu ไม่สำเร็จ: $e';
         _isConnecting = false;
       });
-    }
-  }
-
-  Future<String?> _createSession() async {
-    try {
-      debugPrint(
-        '🚀 เริ่มสร้าง session กับ URL: $_openViduUrl/openvidu/api/sessions',
-      );
-      final url = Uri.parse('$_openViduUrl/openvidu/api/sessions');
-
-      // ลอง credentials หลายแบบ
-      final credentialsList = [
-        'user:minadadmin',
-        'OPENVIDUAPP:MY_SECRET',
-        'OPENVIDUAPP:minadadmin',
-        'admin:minadadmin',
-        'admin:admin',
-        'admin:password',
-        'root:minadadmin',
-        'pcm:minadadmin',
-        'pcm-life:minadadmin',
-        'conference:minadadmin',
-      ];
-
-      for (String credential in credentialsList) {
-        debugPrint('🔑 ลองใช้ credential: ${credential.split(':')[0]}:***');
-
-        final response = await http.post(
-          url,
-          headers: {
-            'Authorization': 'Basic ' + base64Encode(utf8.encode(credential)),
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({'customSessionId': _sessionName}),
-        );
-
-        debugPrint('📡 Response status: ${response.statusCode}');
-        debugPrint('📝 Response body: ${response.body}');
-
-        if (response.statusCode == 200 || response.statusCode == 409) {
-          // 409 = session already exists (ซึ่งก็ OK)
-          debugPrint('✅ สร้าง session สำเร็จด้วย credential: $credential');
-
-          // เก็บ credential ที่ใช้ได้สำหรับการสร้าง token
-          setState(() {
-            _workingCredential = credential;
-          });
-
-          // ถ้า response body ไม่ว่าง ให้ parse JSON
-          if (response.body.isNotEmpty) {
-            final data = jsonDecode(response.body);
-            return data['id'] ?? _sessionName;
-          } else {
-            // ถ้า response body ว่าง (กรณี 409) ให้ใช้ session name ที่กำหนด
-            return _sessionName;
-          }
-        }
-      }
-
-      debugPrint('❌ ไม่พบ credential ที่ใช้ได้');
-      return null;
-    } catch (e) {
-      debugPrint('❌ Create session exception: $e');
-      return null;
-    }
-  }
-
-  Future<String?> _createToken(String sessionId) async {
-    try {
-      final url = Uri.parse(
-        '$_openViduUrl/openvidu/api/sessions/$sessionId/connection',
-      );
-
-      // ใช้ credential ที่ใช้งานได้แล้วจาก _createSession
-      final credentialToUse = _workingCredential ?? 'user:minadadmin';
-      debugPrint(
-        '🔑 ใช้ credential สำหรับ token: ${credentialToUse.split(':')[0]}:***',
-      );
-
-      final response = await http.post(
-        url,
-        headers: {
-          'Authorization':
-              'Basic ' + base64Encode(utf8.encode(credentialToUse)),
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'role': 'PUBLISHER',
-          'data':
-              'Patient_${widget.userId ?? DateTime.now().millisecondsSinceEpoch}',
-        }),
-      );
-
-      debugPrint('📡 Token response status: ${response.statusCode}');
-      debugPrint('📝 Token response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        debugPrint('✅ สร้าง token สำเร็จ');
-        return data['token'];
-      } else {
-        debugPrint(
-          '❌ Create token error: ${response.statusCode} - ${response.body}',
-        );
-        return null;
-      }
-    } catch (e) {
-      debugPrint('❌ Create token exception: $e');
-      return null;
     }
   }
 
@@ -280,50 +203,11 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
         _isConnecting = false;
         _statusMessage = 'เชื่อมต่อ Video Call สำเร็จ!';
       });
-
-      // แสดงข้อมูลห้องในคอนโซล
-      debugPrint('🎉 เข้าห้อง OpenVidu สำเร็จ!');
-      debugPrint('📺 Session Name: $_sessionName');
-      debugPrint('🌐 Server URL: $_openViduUrl');
-      debugPrint(
-        '🔗 อีกฝั่งสามารถเข้าห้อง "$_sessionName" ได้ที่ $_openViduUrl',
-      );
-
-      // แสดงข้อความ
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('🎉 เชื่อมต่อ Video Call สำเร็จ!'),
-                      Text(
-                        'ห้อง: $_sessionName',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                      ),
-                      Text(
-                        'อีกฝั่งเข้าห้อง "$_sessionName" ได้เลย',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.white60,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          const SnackBar(
+            content: Text('🎉 เชื่อมต่อ Video Call สำเร็จ!'),
             backgroundColor: Colors.green,
-            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -335,41 +219,24 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
     }
   }
 
-  void _toggleCamera() {
-    setState(() {
-      _isCameraOn = !_isCameraOn;
-    });
-
-    // ใน implementation จริงจะต้องหยุด/เริ่ม camera stream
-    debugPrint('📹 Camera ${_isCameraOn ? 'ON' : 'OFF'}');
-  }
-
-  void _toggleMicrophone() {
-    setState(() {
-      _isMicOn = !_isMicOn;
-    });
-
-    // ใน implementation จริงจะต้องหยุด/เริ่ม audio stream
-    debugPrint('🎤 Microphone ${_isMicOn ? 'ON' : 'OFF'}');
-  }
+  void _toggleCamera() => setState(() => _isCameraOn = !_isCameraOn);
+  void _toggleMicrophone() => setState(() => _isMicOn = !_isMicOn);
 
   void _switchCamera() async {
     if (_cameras != null && _cameras!.length > 1 && _cameraController != null) {
       final currentCamera = _cameraController!.description;
       CameraDescription newCamera;
-
       if (currentCamera.lensDirection == CameraLensDirection.front) {
         newCamera = _cameras!.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.back,
+          (c) => c.lensDirection == CameraLensDirection.back,
           orElse: () => currentCamera,
         );
       } else {
         newCamera = _cameras!.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.front,
+          (c) => c.lensDirection == CameraLensDirection.front,
           orElse: () => currentCamera,
         );
       }
-
       if (newCamera != currentCamera) {
         await _cameraController!.dispose();
         _cameraController = CameraController(
@@ -379,14 +246,11 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
         );
         await _cameraController!.initialize();
         setState(() {});
-        debugPrint('🔄 Switched camera');
       }
     }
   }
 
-  void _endCall() {
-    Navigator.of(context).pop();
-  }
+  void _endCall() => Navigator.of(context).pop();
 
   @override
   Widget build(BuildContext context) {
@@ -410,12 +274,11 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (_isConnecting) ...[
+          if (_isConnecting)
             const CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
             ),
-            const SizedBox(height: 24),
-          ],
+          const SizedBox(height: 24),
           Text(
             _statusMessage,
             style: const TextStyle(color: Colors.white, fontSize: 16),
@@ -436,7 +299,6 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
   Widget _buildVideoCallUI() {
     return Stack(
       children: [
-        // Remote video area (แบ็คกราวด์)
         Container(
           width: double.infinity,
           height: double.infinity,
@@ -455,8 +317,6 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
             ),
           ),
         ),
-
-        // Local camera preview (มุมบนขวา)
         Positioned(
           top: 40,
           right: 20,
@@ -488,8 +348,6 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
             ),
           ),
         ),
-
-        // Session info (มุมบนซ้าย)
         Positioned(
           top: 40,
           left: 20,
@@ -515,9 +373,9 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
                   style: const TextStyle(color: Colors.white70, fontSize: 10),
                 ),
                 if (_token != null)
-                  Text(
+                  const Text(
                     '🟢 เชื่อมต่อแล้ว',
-                    style: const TextStyle(color: Colors.green, fontSize: 10),
+                    style: TextStyle(color: Colors.green, fontSize: 10),
                   ),
                 Text(
                   'อีกฝั่งเข้าห้อง "$_sessionName"',
@@ -527,8 +385,6 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
             ),
           ),
         ),
-
-        // Control buttons (ด้านล่าง)
         Positioned(
           bottom: 40,
           left: 0,
@@ -536,7 +392,6 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // Toggle microphone
               FloatingActionButton(
                 heroTag: 'mic',
                 onPressed: _toggleMicrophone,
@@ -546,24 +401,18 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
                   color: Colors.white,
                 ),
               ),
-
-              // Switch camera
               FloatingActionButton(
                 heroTag: 'switch',
                 onPressed: _switchCamera,
                 backgroundColor: Colors.grey[700],
                 child: const Icon(Icons.switch_camera, color: Colors.white),
               ),
-
-              // End call
               FloatingActionButton(
                 heroTag: 'end',
                 onPressed: _endCall,
                 backgroundColor: Colors.red,
                 child: const Icon(Icons.call_end, color: Colors.white),
               ),
-
-              // Toggle camera
               FloatingActionButton(
                 heroTag: 'camera',
                 onPressed: _toggleCamera,
@@ -577,6 +426,95 @@ class _NativeVideoCallScreenState extends State<NativeVideoCallScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // Dialog helper: show detailed error, curl and manual token entry
+  Future<void> _showGetVideoErrorDialog(String reason, String? publicId) async {
+    final curl =
+        "curl -X POST 'https://emr-life.com/clinic_master/clinic/Api/get_video' -d 'public_id=${publicId ?? ''}'";
+    final tokenController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('ไม่สามารถขอ token ได้'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(reason),
+                const SizedBox(height: 12),
+                const Text(
+                  'คำสั่งทดสอบ (curl):',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SelectableText(curl),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: curl));
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('คัดลอก curl'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('ปิด'),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                const Text(
+                  'ถ้ามี token ในเครื่อง ให้กรอกที่นี่ (หรือวาง tok_...):',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                TextField(
+                  controller: tokenController,
+                  decoration: const InputDecoration(hintText: 'tok_...'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _initializeVideoCall();
+              },
+              child: const Text('ลองใหม่'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final v = tokenController.text.trim();
+                if (v.isNotEmpty) {
+                  _token = v;
+                  try {
+                    final patient =
+                        await PatientIdCardStorage.loadPatientIdCardData();
+                    final updated = {...?patient, 'video_token': _token};
+                    await PatientIdCardStorage.savePatientIdCardData(updated);
+                  } catch (_) {}
+                  Navigator.of(context).pop();
+                  setState(() {
+                    _statusMessage = 'ใช้ token ที่กรอกและพยายามเชื่อมต่อ...';
+                    _isConnecting = true;
+                  });
+                  await _connectToRoom();
+                }
+              },
+              child: const Text('ใช้ token และต่อ'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
