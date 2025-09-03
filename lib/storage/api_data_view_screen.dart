@@ -24,12 +24,18 @@ class _ApiDataViewScreenState extends State<ApiDataViewScreen> {
 
   Future<void> _loadData() async {
     final careUnitData = await CareUnitStorage.loadCareUnitData();
+    final selectedCareUnit = await CareUnitStorage.loadSelectedCareUnit();
     final idCardData = await IdCardStorage.loadIdCardData(); // อสม.
     final patientIdCardData =
         await PatientIdCardStorage.loadPatientIdCardData(); // ผู้ป่วย
     final vitalsData = await VitalsStorage.loadVitalsData();
     setState(() {
       _careUnitData = careUnitData;
+      // If we have a selected care unit, attach it under a dedicated key so it's
+      // displayed first in the UI.
+      if (selectedCareUnit != null) {
+        _careUnitData = ({...?careUnitData, 'selected': selectedCareUnit});
+      }
       _idCardData = idCardData;
       _patientIdCardData = patientIdCardData;
       _vitalsData = vitalsData;
@@ -230,6 +236,40 @@ class _ApiDataViewScreenState extends State<ApiDataViewScreen> {
                               ],
                             ),
                             const Divider(height: 20),
+                            // If server-selected care unit was saved, show it first
+                            if (_careUnitData != null &&
+                                _careUnitData!['selected'] != null) ...[
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.blue.shade100,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Care Unit (เลือก): ${_careUnitData!['selected']['name'] ?? _careUnitData!['selected']['id']}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.blue.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
                             _buildJsonViewer(_careUnitData!),
                           ],
                         ),

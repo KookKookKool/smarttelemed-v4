@@ -62,6 +62,47 @@ class CareUnitStorage {
       print('❌ Error reading Hive contents: $e');
     }
   }
+
+  // Save only the selected care unit (id + name)
+  static Future<void> saveSelectedCareUnit({
+    required String id,
+    required String name,
+  }) async {
+    try {
+      final payload = {'id': id, 'name': name};
+      print('💾 Saving selected care unit: $payload');
+      var box = await Hive.openBox(boxName);
+      await box.put('selected_care_unit', payload);
+      print('✅ Selected care unit saved');
+    } catch (e) {
+      print('❌ Error saving selected care unit: $e');
+    }
+  }
+
+  // Load only the selected care unit
+  static Future<Map<String, dynamic>?> loadSelectedCareUnit() async {
+    try {
+      var box = await Hive.openBox(boxName);
+      final data = box.get('selected_care_unit');
+      print('📂 Loading selected care unit from Hive: $data');
+      if (data is Map<String, dynamic>) return data;
+      if (data != null) return Map<String, dynamic>.from(data as Map);
+      return null;
+    } catch (e) {
+      print('❌ Error loading selected care unit: $e');
+      return null;
+    }
+  }
+
+  static Future<void> clearSelectedCareUnit() async {
+    try {
+      var box = await Hive.openBox(boxName);
+      await box.delete('selected_care_unit');
+      print('🗑️ Cleared selected care unit from Hive');
+    } catch (e) {
+      print('❌ Error clearing selected care unit: $e');
+    }
+  }
 }
 
 class SessionStorage {

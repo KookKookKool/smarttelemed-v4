@@ -18,7 +18,6 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
   String? _errorText;
 
   Map<String, dynamic>? _careUnitData; // เก็บข้อมูลที่ได้จาก API
-
   Future<void> _onConfirm() async {
     final token = _tokenController.text.trim();
     if (token.isEmpty) {
@@ -59,11 +58,35 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
     print('API Message: $message');
 
     if (message == 'success') {
-      // สำเร็จ - ไปหน้าถัดไป
+      // สำเร็จ - ให้ผู้ใช้เลือก Care Unit หาก server ส่งมา
       print('✅ บันทึกข้อมูล SUCCESS ลง Hive เรียบร้อย');
 
-      final offlineData = await CareUnitStorage.loadCareUnitData();
-      print('Offline data verification: $offlineData');
+      // แปลงข้อมูล list ให้เป็น List<Map<String,dynamic>> ก่อน
+      final raw = result['data'];
+      List<Map<String, dynamic>> dataList = [];
+      if (raw is List) {
+        for (var item in raw) {
+          if (item is Map) dataList.add(Map<String, dynamic>.from(item));
+        }
+      }
+
+      if (dataList.isNotEmpty) {
+        final selected = await _showCareUnitSelectionDialog(dataList);
+        if (selected != null) {
+          await CareUnitStorage.saveSelectedCareUnit(
+            id: selected['id'].toString(),
+            name: selected['name'].toString(),
+          );
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('เลือก Care Unit: ${selected['name']}'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -103,6 +126,76 @@ class _LoginTokenPageState extends State<LoginTokenPage> {
   void dispose() {
     _tokenController.dispose();
     super.dispose();
+  }
+
+  // Show dialog to let user pick a care unit from the API returned list
+  Future<Map<String, dynamic>?> _showCareUnitSelectionDialog(
+    List<Map<String, dynamic>> items,
+  ) async {
+    if (items.isEmpty) return null;
+
+    String? selectedId = items.first['id']?.toString();
+
+    return await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('เลือก Care Unit'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final it = items[index];
+                      final id = it['id']?.toString() ?? '';
+                      final name = it['name']?.toString() ?? id;
+                      return RadioListTile<String>(
+                        value: id,
+                        groupValue: selectedId,
+                        title: Text(name),
+                        onChanged: (v) {
+                          selectedId = v;
+                          // notify rebuild
+                          (context as Element).markNeedsBuild();
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const Text('ยกเลิก'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final found = items.firstWhere(
+                  (e) => e['id']?.toString() == selectedId,
+                  orElse: () => {},
+                );
+                if (found.isNotEmpty) {
+                  Navigator.of(
+                    ctx,
+                  ).pop(Map<String, dynamic>.from(found as Map));
+                } else {
+                  Navigator.of(ctx).pop(null);
+                }
+              },
+              child: const Text('ยืนยัน'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
